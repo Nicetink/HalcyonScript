@@ -1,0 +1,37 @@
+# HalGUI GPU Renderer Makefile for MSYS2/MinGW-w64
+#
+# Usage:
+#   make -f Makefile.gpu          # Build GPU demo
+#   make -f Makefile.gpu clean    # Clean build files
+#   make -f Makefile.gpu run      # Build and run demo
+
+CC = gcc
+CFLAGS = -O2 -Wall -mwindows
+INCLUDES = -I.
+LIBS = -ld3d11 -ld3dcompiler -ldxgi -lole32 -luuid
+
+# Source files
+GPU_SRC = halgui_d3d11.c
+DEMO_SRC = ../../examples/halgui_gpu_demo.c
+
+# Output
+OUTDIR = ../../examples/bin
+DEMO_EXE = $(OUTDIR)/halgui_gpu_demo.exe
+
+.PHONY: all clean run
+
+all: $(DEMO_EXE)
+
+$(OUTDIR):
+	mkdir -p $(OUTDIR)
+
+$(DEMO_EXE): $(DEMO_SRC) $(GPU_SRC) | $(OUTDIR)
+	$(CC) $(CFLAGS) $(INCLUDES) $(DEMO_SRC) $(GPU_SRC) $(LIBS) -o $@
+	@echo ""
+	@echo "Build successful: $@"
+
+clean:
+	rm -f $(DEMO_EXE)
+
+run: $(DEMO_EXE)
+	$(DEMO_EXE)

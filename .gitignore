@@ -1,0 +1,34 @@
+# Build outputs
+*.exe
+*.o
+*.obj
+*.dll
+*.lib
+*.a
+build/
+dist/
+
+# Debug files
+*.log
+*.pdb
+debug.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Test files
+test_*.hcs

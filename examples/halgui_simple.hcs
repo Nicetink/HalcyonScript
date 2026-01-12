@@ -1,0 +1,58 @@
+# Simple HalGUI Example
+# Modern UI without Win32 controls
+
+# Initialize HalGUI
+HalGUI.init()
+HalGUI.setTheme("dark")
+
+# Create window
+create window main "Simple HalGUI App" 400 300
+
+# Create widgets
+create label title "Hello HalGUI!" x:20 y:20 width:360 height:30
+
+create button btnClick "Click Me" x:20 y:70 width:150 height:44
+create button btnTheme "Change Theme" x:180 y:70 width:150 height:44
+
+create checkbox darkMode "Dark Mode" x:20 y:130 width:200 height:28
+
+create slider volume x:20 y:180 width:300 height:28 min:0 max:100 value:50
+
+create progress bar x:20 y:230 width:300 height:10 value:50
+
+create label status "Ready" x:20 y:260 width:360 height:24
+
+# Variables
+var themeIndex = 0
+var themes = ["dark", "light", "midnight", "ocean"]
+
+# Event handlers
+when btnClick clicked {
+    set status.text = "Button clicked!"
+}
+
+when btnTheme clicked {
+    themeIndex = (themeIndex + 1) % 4
+    HalGUI.setTheme(themes[themeIndex])
+    set status.text = "Theme: " + themes[themeIndex]
+}
+
+when darkMode clicked {
+    get darkMode.checked -> isDark
+    if isDark {
+        HalGUI.setTheme("dark")
+        set status.text = "Dark mode enabled"
+    } else {
+        HalGUI.setTheme("light")
+        set status.text = "Light mode enabled"
+    }
+}
+
+when volume changed {
+    get volume.value -> vol
+    set bar.value = vol
+    set status.text = "Volume: " + str(vol) + "%"
+}
+
+# Run
+HalGUI.run()

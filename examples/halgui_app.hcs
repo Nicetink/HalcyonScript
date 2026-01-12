@@ -1,0 +1,137 @@
+// HalGUI Modern App Example
+// Uses HalGUI instead of Win32 controls
+
+// Initialize HalGUI (enables modern UI)
+HalGUI.init()
+
+// Set theme (dark, light, midnight, ocean)
+HalGUI.setTheme("dark")
+
+// Create main window
+window main "HalGUI App" 600, 500
+
+// Header
+label titleLabel "Welcome to HalGUI" {
+    x: 24, y: 24, width: 552, height: 32
+}
+
+label subtitleLabel "Modern • Material • Professional" {
+    x: 24, y: 56, width: 552, height: 20
+}
+
+// Action buttons
+button btnPrimary "Click Me" {
+    x: 24, y: 100, width: 120, height: 44
+}
+
+button btnTheme "Change Theme" {
+    x: 154, y: 100, width: 130, height: 44
+}
+
+button btnMessage "Show Message" {
+    x: 294, y: 100, width: 130, height: 44
+}
+
+button btnOpenFile "Open File" {
+    x: 434, y: 100, width: 120, height: 44
+}
+
+// Form section
+label formLabel "Form Controls" {
+    x: 24, y: 170, width: 200, height: 20
+}
+
+input nameInput "Enter your name..." {
+    x: 24, y: 200, width: 260, height: 44
+}
+
+toggle notifyToggle "Enable notifications" {
+    x: 300, y: 208, width: 220, height: 28
+}
+
+checkbox agreeCheck "I agree to terms" {
+    x: 24, y: 260, width: 200, height: 28
+}
+
+// Progress section
+label progressLabel "Progress" {
+    x: 24, y: 310, width: 200, height: 20
+}
+
+slider volumeSlider {
+    x: 24, y: 340, width: 300, height: 28,
+    min: 0, max: 100, value: 65
+}
+
+progress mainProgress {
+    x: 340, y: 348, width: 220, height: 10,
+    value: 65
+}
+
+// Status
+label statusLabel "Ready" {
+    x: 24, y: 450, width: 552, height: 24
+}
+
+// Theme cycling
+var currentTheme = 0
+var themes = ["dark", "light", "midnight", "ocean"]
+
+// Event handlers
+on btnPrimary clicked {
+    get nameInput.text into userName
+    if userName == "" {
+        set statusLabel.text = "Please enter your name!"
+    } else {
+        set statusLabel.text = "Hello, " + userName + "!"
+    }
+}
+
+on btnTheme clicked {
+    currentTheme = (currentTheme + 1) % 4
+    HalGUI.setTheme(themes[currentTheme])
+    set statusLabel.text = "Theme: " + themes[currentTheme]
+}
+
+on btnMessage clicked {
+    var result = HalGUI.messageBox("HalGUI", "Do you like the modern design?", 2, 3)
+    if result == 1 {
+        set statusLabel.text = "Thanks! 😊"
+    } else {
+        set statusLabel.text = "We'll keep improving!"
+    }
+}
+
+on btnOpenFile clicked {
+    var file = HalGUI.openFile("Select a file", "All Files|*.*|Text Files|*.txt||")
+    if file != null {
+        set statusLabel.text = "Selected: " + file
+    }
+}
+
+on volumeSlider changed {
+    get volumeSlider.value into vol
+    set mainProgress.value = vol
+    set statusLabel.text = "Volume: " + str(vol) + "%"
+}
+
+on notifyToggle clicked {
+    get notifyToggle.checked into enabled
+    if enabled {
+        set statusLabel.text = "Notifications enabled"
+    } else {
+        set statusLabel.text = "Notifications disabled"
+    }
+}
+
+on agreeCheck clicked {
+    get agreeCheck.checked into agreed
+    if agreed {
+        set statusLabel.text = "Terms accepted"
+    } else {
+        set statusLabel.text = "Terms not accepted"
+    }
+}
+
+// Run the app
+HalGUI.run()

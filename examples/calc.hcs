@@ -1,0 +1,217 @@
+# HalGUI Calculator with Responsive Layout
+HalGUI.init()
+HalGUI.setTheme("ocean")
+
+create window app "Calculator" 320 450
+
+# Display - takes full width with margins
+create label display "0" x:10 y:10 width:300 height:60
+
+# State variables - must be global
+global displayValue = 0
+global previousValue = 0
+global operation = ""
+global newNumber = 1
+
+# Button dimensions (will scale with window)
+# Row 1: C, +/-, %, /
+create button btnC "C" x:10 y:80 width:70 height:55
+create button btnSign "+/-" x:85 y:80 width:70 height:55
+create button btnPercent "%" x:160 y:80 width:70 height:55
+create button btnDiv "/" x:235 y:80 width:70 height:55
+
+# Row 2: 7, 8, 9, *
+create button btn7 "7" x:10 y:140 width:70 height:55
+create button btn8 "8" x:85 y:140 width:70 height:55
+create button btn9 "9" x:160 y:140 width:70 height:55
+create button btnMul "*" x:235 y:140 width:70 height:55
+
+# Row 3: 4, 5, 6, -
+create button btn4 "4" x:10 y:200 width:70 height:55
+create button btn5 "5" x:85 y:200 width:70 height:55
+create button btn6 "6" x:160 y:200 width:70 height:55
+create button btnSub "-" x:235 y:200 width:70 height:55
+
+# Row 4: 1, 2, 3, +
+create button btn1 "1" x:10 y:260 width:70 height:55
+create button btn2 "2" x:85 y:260 width:70 height:55
+create button btn3 "3" x:160 y:260 width:70 height:55
+create button btnAdd "+" x:235 y:260 width:70 height:55
+
+# Row 5: 0, ., =
+create button btn0 "0" x:10 y:320 width:145 height:55
+create button btnDot "." x:160 y:320 width:70 height:55
+create button btnEq "=" x:235 y:320 width:70 height:55
+
+# Status bar
+create label status "HalcyonScript Calculator" x:10 y:385 width:300 height:25
+
+# Number buttons
+when btn0 clicked {
+    if newNumber == 1 {
+        displayValue = 0
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10
+    }
+    set display.text = displayValue
+}
+
+when btn1 clicked {
+    if newNumber == 1 {
+        displayValue = 1
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 1
+    }
+    set display.text = displayValue
+}
+
+when btn2 clicked {
+    if newNumber == 1 {
+        displayValue = 2
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 2
+    }
+    set display.text = displayValue
+}
+
+when btn3 clicked {
+    if newNumber == 1 {
+        displayValue = 3
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 3
+    }
+    set display.text = displayValue
+}
+
+when btn4 clicked {
+    if newNumber == 1 {
+        displayValue = 4
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 4
+    }
+    set display.text = displayValue
+}
+
+when btn5 clicked {
+    if newNumber == 1 {
+        displayValue = 5
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 5
+    }
+    set display.text = displayValue
+}
+
+when btn6 clicked {
+    if newNumber == 1 {
+        displayValue = 6
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 6
+    }
+    set display.text = displayValue
+}
+
+when btn7 clicked {
+    if newNumber == 1 {
+        displayValue = 7
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 7
+    }
+    set display.text = displayValue
+}
+
+when btn8 clicked {
+    if newNumber == 1 {
+        displayValue = 8
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 8
+    }
+    set display.text = displayValue
+}
+
+when btn9 clicked {
+    if newNumber == 1 {
+        displayValue = 9
+        newNumber = 0
+    } else {
+        displayValue = displayValue * 10 + 9
+    }
+    set display.text = displayValue
+}
+
+# Operations
+when btnAdd clicked {
+    previousValue = displayValue
+    operation = "+"
+    newNumber = 1
+}
+
+when btnSub clicked {
+    previousValue = displayValue
+    operation = "-"
+    newNumber = 1
+}
+
+when btnMul clicked {
+    previousValue = displayValue
+    operation = "*"
+    newNumber = 1
+}
+
+when btnDiv clicked {
+    previousValue = displayValue
+    operation = "/"
+    newNumber = 1
+}
+
+# Equals
+when btnEq clicked {
+    if operation == "+" {
+        displayValue = previousValue + displayValue
+    }
+    if operation == "-" {
+        displayValue = previousValue - displayValue
+    }
+    if operation == "*" {
+        displayValue = previousValue * displayValue
+    }
+    if operation == "/" {
+        if displayValue != 0 {
+            displayValue = previousValue / displayValue
+        }
+    }
+    set display.text = displayValue
+    newNumber = 1
+    operation = ""
+}
+
+# Clear
+when btnC clicked {
+    displayValue = 0
+    previousValue = 0
+    operation = ""
+    newNumber = 1
+    set display.text = "0"
+}
+
+# Percent
+when btnPercent clicked {
+    displayValue = displayValue / 100
+    set display.text = displayValue
+}
+
+# Sign toggle
+when btnSign clicked {
+    displayValue = 0 - displayValue
+    set display.text = displayValue
+}
+
+HalGUI.run()
