@@ -1,9 +1,0 @@
-Changes in version 0.18.26:
-A new HalForms GUI framework has been created. Warnings during the build of HalcyonScript and HalGUI have been fixed. The new version implements programming without GUI frameworks (pure command-line mode). Minor bugs have been fixed, and HalGUI now has its own calendar widget.
-
-Here is an example of a GUI-less application:
-
-print "Hello World"
-var name = input("your name: ")
-var numbers = range(1, 11)
-print "numbers:", numbers
