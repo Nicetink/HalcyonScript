@@ -1,0 +1,43 @@
+# HalForms Demo - Windows Forms-like UI
+# Simple demo to test button clicks
+
+print "Starting HalForms demo..."
+
+# Initialize HalForms
+HalForms.init()
+
+# Create main form
+HalForms.createForm("mainForm", "HalForms Demo", 400, 300, 0)
+
+# Create controls
+HalForms.createControl("label", "titleLabel", "Welcome to HalForms!", 20, 20, 300, 25)
+HalForms.createControl("label", "nameLabel", "Your name:", 20, 60, 80, 25)
+HalForms.createControl("textbox", "nameInput", "", 100, 60, 200, 25)
+
+HalForms.createControl("button", "submitBtn", "Submit", 20, 100, 100, 30)
+HalForms.createControl("button", "clearBtn", "Clear", 130, 100, 100, 30)
+HalForms.createControl("button", "aboutBtn", "About", 240, 100, 100, 30)
+
+HalForms.createControl("label", "resultLabel", "", 20, 150, 350, 50)
+
+# Event handlers
+on submitBtn clicked {
+    global name = HalForms.getProperty("nameInput", "text")
+    HalForms.setProperty("resultLabel", "text", "Hello, " + name + "!")
+    print "Submit clicked, name: " + name
+}
+
+on clearBtn clicked {
+    HalForms.setProperty("nameInput", "text", "")
+    HalForms.setProperty("resultLabel", "text", "")
+    print "Clear clicked"
+}
+
+on aboutBtn clicked {
+    HalForms.messageBox("HalForms Demo v1.0\nWindows Forms-like UI for HalcyonScript", "About", 0, 0)
+    print "About clicked"
+}
+
+print "Starting main loop..."
+HalForms.run()
+print "Program finished"

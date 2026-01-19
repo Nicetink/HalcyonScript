@@ -28,7 +28,7 @@ const char* token_type_name(HcsTokenType type) {
         "CHECKBOX", "IMAGE", "PANEL", "TEXTAREA", "DROPDOWN", "SLIDER",
         "PROGRESS", "TAB", "TABS", "MENU", "MENUITEM", "TOOLBAR",
         "STATUSBAR", "TREEVIEW", "TABLE", "CANVAS", "SPLITTER",
-        "SCROLLBAR", "TOOLTIP", "DIALOG",
+        "SCROLLBAR", "TOOLTIP", "DIALOG", "CALENDAR",
         "WHEN", "CLICKED", "CHANGED", "STARTED", "CHECKED", "CLOSED",
         "RESIZED", "KEYDOWN", "KEYUP", "KEYPRESS", "MOUSEMOVE",
         "MOUSEDOWN", "MOUSEUP", "DOUBLECLICK", "RIGHTCLICK", "FOCUS",

@@ -330,6 +330,7 @@ struct HalWidget {
     // Custom data
     void* data;
     void* nativeHandle;
+    HWND hwnd;  // For popup windows (notifications, tooltips, etc.)
     
     // Animation state
     float animProgress;
@@ -521,6 +522,14 @@ void hal_canvas_draw_line(HalWidget* canvas, int x1, int y1, int x2, int y2, Hal
 void hal_canvas_draw_circle(HalWidget* canvas, int cx, int cy, int radius, HalColor color);
 void hal_canvas_fill_circle(HalWidget* canvas, int cx, int cy, int radius, HalColor color);
 void hal_canvas_draw_text(HalWidget* canvas, int x, int y, const char* text, HalColor color);
+
+// Calendar
+HalWidget* hal_calendar_create(HalWidget* parent);
+void hal_calendar_set_date(HalWidget* cal, int year, int month, int day);
+void hal_calendar_get_selected_date(HalWidget* cal, int* year, int* month, int* day);
+void hal_calendar_next_month(HalWidget* cal);
+void hal_calendar_prev_month(HalWidget* cal);
+bool hal_calendar_handle_click(HalWidget* cal, int mouseX, int mouseY);
 
 // Image
 HalWidget* hal_image_create(HalWidget* parent, const char* path);

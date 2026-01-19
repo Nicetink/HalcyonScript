@@ -5,6 +5,28 @@
 #include "runtime.h"
 #include <stdio.h>
 #include <math.h>
+#include <windows.h>
+
+/* Helper function to convert UTF-8 string to Wide string for Windows API */
+static wchar_t* utf8_to_wide(const char* utf8) {
+    if (!utf8) return NULL;
+    int len = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
+    if (len == 0) return NULL;
+    wchar_t* wide = (wchar_t*)malloc(len * sizeof(wchar_t));
+    if (!wide) return NULL;
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, wide, len);
+    return wide;
+}
+
+/* Helper function to show MessageBox with UTF-8 text */
+static int msgbox_utf8(const char* text, const char* title, UINT type) {
+    wchar_t* wtext = utf8_to_wide(text);
+    wchar_t* wtitle = utf8_to_wide(title);
+    int result = MessageBoxW(NULL, wtext ? wtext : L"", wtitle ? wtitle : L"HalcyonScript", type);
+    free(wtext);
+    free(wtitle);
+    return result;
+}
 
 // Forward declarations for GPU runtime
 extern void halgui_gpu_init(HcsRuntime* rt, const char* title, int width, int height);
@@ -35,6 +57,7 @@ extern void halgui_set_theme(const char* theme_name);
 extern HcsValue* halgui_dialog_message(HcsRuntime* rt, const char* title, const char* message, int buttons, int icon);
 extern HcsValue* halgui_dialog_open_file(HcsRuntime* rt, const char* title, const char* filter);
 extern HcsValue* halgui_dialog_save_file(HcsRuntime* rt, const char* title, const char* filter, const char* default_name);
+extern HcsValue* halgui_dialog_select_folder(HcsRuntime* rt, const char* title);
 
 // Forward declarations for Audio runtime
 extern HcsValue* halgui_audio_create(HcsRuntime* rt, const char* name);
@@ -54,11 +77,38 @@ extern HcsValue* halgui_audio_set_mute(HcsRuntime* rt, const char* name, bool mu
 extern HcsValue* halgui_audio_is_muted(HcsRuntime* rt, const char* name);
 extern HcsValue* halgui_audio_destroy(HcsRuntime* rt, const char* name);
 
+// Forward declarations for HalForms runtime
+extern void halforms_runtime_init(HcsRuntime* rt);
+extern void halforms_runtime_shutdown(void);
+extern void halforms_rt_create_form(HcsRuntime* rt, const char* name, const char* title, int width, int height, int style);
+extern void halforms_rt_create_control(HcsRuntime* rt, const char* type, const char* name, const char* text, int x, int y, int w, int h);
+extern void halforms_rt_set_property(HcsRuntime* rt, const char* element, const char* prop, HcsValue* val);
+extern HcsValue* halforms_rt_get_property(HcsRuntime* rt, const char* element, const char* prop);
+extern void halforms_rt_register_handler(HcsAstNode* node);
+extern void halforms_rt_run(void);
+extern void halforms_rt_add_item(const char* element, const char* item);
+extern void halforms_rt_clear_items(const char* element);
+extern HcsValue* halforms_rt_msgbox(const char* text, const char* title, int buttons, int icon);
+extern HcsValue* halforms_rt_open_file(const char* title, const char* filter);
+extern HcsValue* halforms_rt_save_file(const char* title, const char* filter, const char* defaultName);
+extern HcsValue* halforms_rt_browse_folder(const char* title);
+extern HcsValue* halforms_rt_color_dialog(int initialColor);
+extern HcsValue* halforms_rt_input_dialog(const char* title, const char* prompt, const char* defaultValue);
+extern void halforms_rt_create_menu(const char* name);
+extern void halforms_rt_add_menu_item(const char* menuName, const char* text, const char* handlerName);
+extern void halforms_rt_set_form_menu(const char* formName, const char* menuName);
+extern void halforms_rt_create_statusbar(const char* name, int partCount);
+extern void halforms_rt_set_statusbar_text(const char* name, int part, const char* text);
+extern void halforms_rt_tree_add_item(const char* treeName, const char* parentPath, const char* text);
+extern void halforms_rt_tab_add_tab(const char* tabName, const char* title);
+
 // Flag to use HalGUI instead of Win32
 static bool g_use_halgui = false;
+// Flag to use HalForms
+static bool g_use_halforms = false;
 
 void execute_statement(HcsRuntime* rt, HcsAstNode* node);
-static HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node);
+HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node);
 
 HcsScope* scope_create(HcsScope* parent) {
     HcsScope* s = (HcsScope*)calloc(1, sizeof(HcsScope));
@@ -252,6 +302,158 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
         return value_number(n);
     }
     
+    // Input/Output functions
+    if (strcmp(name, "input") == 0) {
+        // Optional prompt message
+        if (args->count > 0) {
+            HcsValue* prompt = eval_expression(rt, args->items[0]);
+            char* prompt_str = value_to_string(prompt);
+            printf("%s", prompt_str);
+            fflush(stdout);
+            free(prompt_str);
+            value_release(prompt);
+        }
+        
+        char buffer[4096];
+        if (fgets(buffer, sizeof(buffer), stdin)) {
+            size_t len = strlen(buffer);
+            if (len > 0 && buffer[len-1] == '\n') buffer[len-1] = '\0';
+            return value_string(buffer);
+        }
+        return value_string("");
+    }
+    
+    // Array functions
+    if (strcmp(name, "array") == 0) {
+        // Create empty array or array with initial size
+        HcsValue* arr = value_array();
+        if (args->count > 0) {
+            HcsValue* size_v = eval_expression(rt, args->items[0]);
+            int size = (int)value_to_number(size_v);
+            value_release(size_v);
+            for (int i = 0; i < size; i++) {
+                value_array_push(arr, value_null());
+            }
+        }
+        return arr;
+    }
+    if (strcmp(name, "range") == 0 && args->count >= 1) {
+        // range(end) or range(start, end) or range(start, end, step)
+        int start = 0, end = 0, step = 1;
+        if (args->count == 1) {
+            HcsValue* end_v = eval_expression(rt, args->items[0]);
+            end = (int)value_to_number(end_v);
+            value_release(end_v);
+        } else if (args->count >= 2) {
+            HcsValue* start_v = eval_expression(rt, args->items[0]);
+            HcsValue* end_v = eval_expression(rt, args->items[1]);
+            start = (int)value_to_number(start_v);
+            end = (int)value_to_number(end_v);
+            value_release(start_v);
+            value_release(end_v);
+            if (args->count >= 3) {
+                HcsValue* step_v = eval_expression(rt, args->items[2]);
+                step = (int)value_to_number(step_v);
+                value_release(step_v);
+            }
+        }
+        HcsValue* arr = value_array();
+        if (step > 0) {
+            for (int i = start; i < end; i += step) {
+                value_array_push(arr, value_number(i));
+            }
+        } else if (step < 0) {
+            for (int i = start; i > end; i += step) {
+                value_array_push(arr, value_number(i));
+            }
+        }
+        return arr;
+    }
+    
+    // String functions
+    if (strcmp(name, "upper") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        char* s = value_to_string(v);
+        for (int i = 0; s[i]; i++) s[i] = toupper(s[i]);
+        HcsValue* r = value_string(s);
+        free(s); value_release(v);
+        return r;
+    }
+    if (strcmp(name, "lower") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        char* s = value_to_string(v);
+        for (int i = 0; s[i]; i++) s[i] = tolower(s[i]);
+        HcsValue* r = value_string(s);
+        free(s); value_release(v);
+        return r;
+    }
+    if (strcmp(name, "trim") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        char* s = value_to_string(v);
+        // Trim leading spaces
+        char* start = s;
+        while (*start && isspace(*start)) start++;
+        // Trim trailing spaces
+        char* end = start + strlen(start) - 1;
+        while (end > start && isspace(*end)) end--;
+        *(end + 1) = '\0';
+        HcsValue* r = value_string(start);
+        free(s); value_release(v);
+        return r;
+    }
+    if (strcmp(name, "split") == 0 && args->count >= 2) {
+        HcsValue* str_v = eval_expression(rt, args->items[0]);
+        HcsValue* delim_v = eval_expression(rt, args->items[1]);
+        char* str = value_to_string(str_v);
+        char* delim = value_to_string(delim_v);
+        
+        HcsValue* arr = value_array();
+        char* copy = strdup(str);
+        char* token = strtok(copy, delim);
+        while (token) {
+            value_array_push(arr, value_string(token));
+            token = strtok(NULL, delim);
+        }
+        
+        free(copy);
+        free(str);
+        free(delim);
+        value_release(str_v);
+        value_release(delim_v);
+        return arr;
+    }
+    if (strcmp(name, "replace") == 0 && args->count >= 3) {
+        HcsValue* str_v = eval_expression(rt, args->items[0]);
+        HcsValue* old_v = eval_expression(rt, args->items[1]);
+        HcsValue* new_v = eval_expression(rt, args->items[2]);
+        
+        char* str = value_to_string(str_v);
+        char* old = value_to_string(old_v);
+        char* new = value_to_string(new_v);
+        
+        char* pos = strstr(str, old);
+        if (pos) {
+            size_t len = strlen(str) - strlen(old) + strlen(new) + 1;
+            char* result = malloc(len);
+            size_t prefix_len = pos - str;
+            strncpy(result, str, prefix_len);
+            result[prefix_len] = '\0';
+            strcat(result, new);
+            strcat(result, pos + strlen(old));
+            HcsValue* r = value_string(result);
+            free(result);
+            free(str); free(old); free(new);
+            value_release(str_v); value_release(old_v); value_release(new_v);
+            return r;
+        }
+        
+        free(old); free(new);
+        value_release(old_v); value_release(new_v);
+        HcsValue* r = value_string(str);
+        free(str); value_release(str_v);
+        return r;
+    }
+    
     // Math functions
     if (strcmp(name, "sin") == 0 && args->count > 0) {
         HcsValue* v = eval_expression(rt, args->items[0]);
@@ -262,6 +464,103 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
         HcsValue* v = eval_expression(rt, args->items[0]);
         double r = cos(value_to_number(v)); value_release(v);
         return value_number(r);
+    }
+    if (strcmp(name, "tan") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        double r = tan(value_to_number(v)); value_release(v);
+        return value_number(r);
+    }
+    if (strcmp(name, "pow") == 0 && args->count > 1) {
+        HcsValue* base = eval_expression(rt, args->items[0]);
+        HcsValue* exp = eval_expression(rt, args->items[1]);
+        double r = pow(value_to_number(base), value_to_number(exp));
+        value_release(base); value_release(exp);
+        return value_number(r);
+    }
+    if (strcmp(name, "log") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        double r = log(value_to_number(v)); value_release(v);
+        return value_number(r);
+    }
+    if (strcmp(name, "exp") == 0 && args->count > 0) {
+        HcsValue* v = eval_expression(rt, args->items[0]);
+        double r = exp(value_to_number(v)); value_release(v);
+        return value_number(r);
+    }
+    
+    // Math.* namespace functions
+    if (strncmp(name, "Math.", 5) == 0) {
+        const char* func = name + 5;
+        if (strcmp(func, "sqrt") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = sqrt(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "abs") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = fabs(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "sin") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = sin(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "cos") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = cos(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "tan") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = tan(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "pow") == 0 && args->count > 1) {
+            HcsValue* base = eval_expression(rt, args->items[0]);
+            HcsValue* exp = eval_expression(rt, args->items[1]);
+            double r = pow(value_to_number(base), value_to_number(exp));
+            value_release(base); value_release(exp);
+            return value_number(r);
+        }
+        if (strcmp(func, "floor") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = floor(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "ceil") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = ceil(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "round") == 0 && args->count > 0) {
+            HcsValue* v = eval_expression(rt, args->items[0]);
+            double r = round(value_to_number(v)); value_release(v);
+            return value_number(r);
+        }
+        if (strcmp(func, "random") == 0) {
+            return value_number((double)rand() / RAND_MAX);
+        }
+        if (strcmp(func, "min") == 0 && args->count > 1) {
+            HcsValue* a = eval_expression(rt, args->items[0]);
+            HcsValue* b = eval_expression(rt, args->items[1]);
+            double r = fmin(value_to_number(a), value_to_number(b));
+            value_release(a); value_release(b);
+            return value_number(r);
+        }
+        if (strcmp(func, "max") == 0 && args->count > 1) {
+            HcsValue* a = eval_expression(rt, args->items[0]);
+            HcsValue* b = eval_expression(rt, args->items[1]);
+            double r = fmax(value_to_number(a), value_to_number(b));
+            value_release(a); value_release(b);
+            return value_number(r);
+        }
+        if (strcmp(func, "PI") == 0) {
+            return value_number(3.14159265358979323846);
+        }
+        if (strcmp(func, "E") == 0) {
+            return value_number(2.71828182845904523536);
+        }
     }
     
     // File I/O functions
@@ -361,9 +660,6 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
     if (strncmp(name, "HalGUI.", 7) == 0) {
         const char* func = name + 7;
         
-        printf("[HALGUI] Function called: %s\n", func);
-        fflush(stdout);
-        
         // HalGUI.init() - enable HalGUI mode
         if (strcmp(func, "init") == 0) {
             g_use_halgui = true;
@@ -418,6 +714,317 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
             HcsValue* result = halgui_dialog_save_file(rt, title, filter, defname);
             free(title); free(filter); free(defname);
             return result;
+        }
+        
+        // HalGUI.selectFolder(title)
+        extern HcsValue* halgui_dialog_select_folder(HcsRuntime* rt, const char* title);
+        if (strcmp(func, "selectFolder") == 0) {
+            char* title = args->count > 0 ? value_to_string(eval_expression(rt, args->items[0])) : strdup("Select Folder");
+            HcsValue* result = halgui_dialog_select_folder(rt, title);
+            free(title);
+            return result;
+        }
+        
+        // HalGUI.showNotification(title, message, type, duration)
+        extern void halgui_show_notification(const char* title, const char* message, const char* type, int duration);
+        if (strcmp(func, "showNotification") == 0 && args->count >= 2) {
+            HcsValue* title_v = eval_expression(rt, args->items[0]);
+            HcsValue* msg_v = eval_expression(rt, args->items[1]);
+            char* title = value_to_string(title_v);
+            char* msg = value_to_string(msg_v);
+            char* type = args->count > 2 ? value_to_string(eval_expression(rt, args->items[2])) : strdup("info");
+            int duration = args->count > 3 ? (int)value_to_number(eval_expression(rt, args->items[3])) : 3000;
+            halgui_show_notification(title, msg, type, duration);
+            free(title); free(msg); free(type);
+            value_release(title_v); value_release(msg_v);
+            return value_null();
+        }
+    }
+    
+    // HalForms.* functions (Windows Forms-like API)
+    if (strncmp(name, "HalForms.", 9) == 0) {
+        const char* func = name + 9;
+        
+        // HalForms.init() - enable HalForms mode
+        if (strcmp(func, "init") == 0) {
+            g_use_halforms = true;
+            halforms_runtime_init(rt);
+            return value_null();
+        }
+        
+        // HalForms.createForm(name, title, width, height, style)
+        if (strcmp(func, "createForm") == 0 && args->count >= 4) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* title_v = eval_expression(rt, args->items[1]);
+            HcsValue* w_v = eval_expression(rt, args->items[2]);
+            HcsValue* h_v = eval_expression(rt, args->items[3]);
+            char* form_name = value_to_string(name_v);
+            char* title = value_to_string(title_v);
+            int width = (int)value_to_number(w_v);
+            int height = (int)value_to_number(h_v);
+            int style = args->count > 4 ? (int)value_to_number(eval_expression(rt, args->items[4])) : 0;
+            halforms_rt_create_form(rt, form_name, title, width, height, style);
+            free(form_name); free(title);
+            value_release(name_v); value_release(title_v); value_release(w_v); value_release(h_v);
+            return value_null();
+        }
+        
+        // HalForms.createControl(type, name, text, x, y, w, h)
+        if (strcmp(func, "createControl") == 0 && args->count >= 7) {
+            HcsValue* type_v = eval_expression(rt, args->items[0]);
+            HcsValue* name_v = eval_expression(rt, args->items[1]);
+            HcsValue* text_v = eval_expression(rt, args->items[2]);
+            HcsValue* x_v = eval_expression(rt, args->items[3]);
+            HcsValue* y_v = eval_expression(rt, args->items[4]);
+            HcsValue* w_v = eval_expression(rt, args->items[5]);
+            HcsValue* h_v = eval_expression(rt, args->items[6]);
+            char* type = value_to_string(type_v);
+            char* ctrl_name = value_to_string(name_v);
+            char* text = value_to_string(text_v);
+            int x = (int)value_to_number(x_v);
+            int y = (int)value_to_number(y_v);
+            int w = (int)value_to_number(w_v);
+            int h = (int)value_to_number(h_v);
+            halforms_rt_create_control(rt, type, ctrl_name, text, x, y, w, h);
+            free(type); free(ctrl_name); free(text);
+            value_release(type_v); value_release(name_v); value_release(text_v);
+            value_release(x_v); value_release(y_v); value_release(w_v); value_release(h_v);
+            return value_null();
+        }
+        
+        // HalForms.setProperty(element, property, value)
+        if (strcmp(func, "setProperty") == 0 && args->count >= 3) {
+            HcsValue* elem_v = eval_expression(rt, args->items[0]);
+            HcsValue* prop_v = eval_expression(rt, args->items[1]);
+            HcsValue* val_v = eval_expression(rt, args->items[2]);
+            char* element = value_to_string(elem_v);
+            char* prop = value_to_string(prop_v);
+            halforms_rt_set_property(rt, element, prop, val_v);
+            free(element); free(prop);
+            value_release(elem_v); value_release(prop_v);
+            return value_null();
+        }
+        
+        // HalForms.getProperty(element, property)
+        if (strcmp(func, "getProperty") == 0 && args->count >= 2) {
+            HcsValue* elem_v = eval_expression(rt, args->items[0]);
+            HcsValue* prop_v = eval_expression(rt, args->items[1]);
+            char* element = value_to_string(elem_v);
+            char* prop = value_to_string(prop_v);
+            HcsValue* result = halforms_rt_get_property(rt, element, prop);
+            free(element); free(prop);
+            value_release(elem_v); value_release(prop_v);
+            return result;
+        }
+        
+        // HalForms.addItem(element, item)
+        if (strcmp(func, "addItem") == 0 && args->count >= 2) {
+            HcsValue* elem_v = eval_expression(rt, args->items[0]);
+            HcsValue* item_v = eval_expression(rt, args->items[1]);
+            char* element = value_to_string(elem_v);
+            char* item = value_to_string(item_v);
+            halforms_rt_add_item(element, item);
+            free(element); free(item);
+            value_release(elem_v); value_release(item_v);
+            return value_null();
+        }
+        
+        // HalForms.clearItems(element)
+        if (strcmp(func, "clearItems") == 0 && args->count >= 1) {
+            HcsValue* elem_v = eval_expression(rt, args->items[0]);
+            char* element = value_to_string(elem_v);
+            halforms_rt_clear_items(element);
+            free(element);
+            value_release(elem_v);
+            return value_null();
+        }
+        
+        // HalForms.run() - start event loop
+        if (strcmp(func, "run") == 0) {
+            halforms_rt_run();
+            return value_null();
+        }
+        
+        // HalForms.messageBox(text, title, buttons, icon)
+        if (strcmp(func, "messageBox") == 0 && args->count >= 2) {
+            HcsValue* text_v = eval_expression(rt, args->items[0]);
+            HcsValue* title_v = eval_expression(rt, args->items[1]);
+            char* text = value_to_string(text_v);
+            char* title = value_to_string(title_v);
+            int buttons = args->count > 2 ? (int)value_to_number(eval_expression(rt, args->items[2])) : 0;
+            int icon = args->count > 3 ? (int)value_to_number(eval_expression(rt, args->items[3])) : 0;
+            HcsValue* result = halforms_rt_msgbox(text, title, buttons, icon);
+            free(text); free(title);
+            value_release(text_v); value_release(title_v);
+            return result;
+        }
+        
+        // HalForms.openFile(title, filter)
+        if (strcmp(func, "openFile") == 0) {
+            char* title = args->count > 0 ? value_to_string(eval_expression(rt, args->items[0])) : strdup("Open File");
+            char* filter = args->count > 1 ? value_to_string(eval_expression(rt, args->items[1])) : strdup("All Files (*.*)\0*.*\0");
+            HcsValue* result = halforms_rt_open_file(title, filter);
+            free(title); free(filter);
+            return result;
+        }
+        
+        // HalForms.saveFile(title, filter, defaultName)
+        if (strcmp(func, "saveFile") == 0) {
+            char* title = args->count > 0 ? value_to_string(eval_expression(rt, args->items[0])) : strdup("Save File");
+            char* filter = args->count > 1 ? value_to_string(eval_expression(rt, args->items[1])) : strdup("All Files (*.*)\0*.*\0");
+            char* defname = args->count > 2 ? value_to_string(eval_expression(rt, args->items[2])) : strdup("");
+            HcsValue* result = halforms_rt_save_file(title, filter, defname);
+            free(title); free(filter); free(defname);
+            return result;
+        }
+        
+        // HalForms.browseFolder(title)
+        if (strcmp(func, "browseFolder") == 0) {
+            char* title = args->count > 0 ? value_to_string(eval_expression(rt, args->items[0])) : strdup("Select Folder");
+            HcsValue* result = halforms_rt_browse_folder(title);
+            free(title);
+            return result;
+        }
+        
+        // HalForms.colorDialog(initialColor)
+        if (strcmp(func, "colorDialog") == 0) {
+            int initial = args->count > 0 ? (int)value_to_number(eval_expression(rt, args->items[0])) : 0xFFFFFF;
+            return halforms_rt_color_dialog(initial);
+        }
+        
+        // HalForms.inputDialog(title, prompt, defaultValue)
+        if (strcmp(func, "inputDialog") == 0) {
+            char* title = args->count > 0 ? value_to_string(eval_expression(rt, args->items[0])) : strdup("Input");
+            char* prompt = args->count > 1 ? value_to_string(eval_expression(rt, args->items[1])) : strdup("Enter value:");
+            char* defval = args->count > 2 ? value_to_string(eval_expression(rt, args->items[2])) : strdup("");
+            HcsValue* result = halforms_rt_input_dialog(title, prompt, defval);
+            free(title); free(prompt); free(defval);
+            return result;
+        }
+        
+        // HalForms.createMenu(name)
+        if (strcmp(func, "createMenu") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            char* menu_name = value_to_string(name_v);
+            halforms_rt_create_menu(menu_name);
+            free(menu_name);
+            value_release(name_v);
+            return value_null();
+        }
+        
+        // HalForms.addMenuItem(menuName, text, handlerName)
+        if (strcmp(func, "addMenuItem") == 0 && args->count >= 2) {
+            HcsValue* menu_v = eval_expression(rt, args->items[0]);
+            HcsValue* text_v = eval_expression(rt, args->items[1]);
+            char* menu_name = value_to_string(menu_v);
+            char* text = value_to_string(text_v);
+            char* handler = args->count > 2 ? value_to_string(eval_expression(rt, args->items[2])) : NULL;
+            halforms_rt_add_menu_item(menu_name, text, handler);
+            free(menu_name); free(text);
+            if (handler) free(handler);
+            value_release(menu_v); value_release(text_v);
+            return value_null();
+        }
+        
+        // HalForms.setFormMenu(formName, menuName)
+        if (strcmp(func, "setFormMenu") == 0 && args->count >= 2) {
+            HcsValue* form_v = eval_expression(rt, args->items[0]);
+            HcsValue* menu_v = eval_expression(rt, args->items[1]);
+            char* form_name = value_to_string(form_v);
+            char* menu_name = value_to_string(menu_v);
+            halforms_rt_set_form_menu(form_name, menu_name);
+            free(form_name); free(menu_name);
+            value_release(form_v); value_release(menu_v);
+            return value_null();
+        }
+        
+        // HalForms.createStatusBar(name, partCount)
+        if (strcmp(func, "createStatusBar") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* count_v = eval_expression(rt, args->items[1]);
+            char* sb_name = value_to_string(name_v);
+            int count = (int)value_to_number(count_v);
+            halforms_rt_create_statusbar(sb_name, count);
+            free(sb_name);
+            value_release(name_v); value_release(count_v);
+            return value_null();
+        }
+        
+        // HalForms.setStatusBarText(name, part, text)
+        if (strcmp(func, "setStatusBarText") == 0 && args->count >= 3) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* part_v = eval_expression(rt, args->items[1]);
+            HcsValue* text_v = eval_expression(rt, args->items[2]);
+            char* sb_name = value_to_string(name_v);
+            int part = (int)value_to_number(part_v);
+            char* text = value_to_string(text_v);
+            halforms_rt_set_statusbar_text(sb_name, part, text);
+            free(sb_name); free(text);
+            value_release(name_v); value_release(part_v); value_release(text_v);
+            return value_null();
+        }
+        
+        // HalForms.treeAddItem(treeName, parentPath, text)
+        if (strcmp(func, "treeAddItem") == 0 && args->count >= 3) {
+            HcsValue* tree_v = eval_expression(rt, args->items[0]);
+            HcsValue* parent_v = eval_expression(rt, args->items[1]);
+            HcsValue* text_v = eval_expression(rt, args->items[2]);
+            char* tree_name = value_to_string(tree_v);
+            char* parent_path = value_to_string(parent_v);
+            char* text = value_to_string(text_v);
+            halforms_rt_tree_add_item(tree_name, parent_path, text);
+            free(tree_name); free(parent_path); free(text);
+            value_release(tree_v); value_release(parent_v); value_release(text_v);
+            return value_null();
+        }
+        
+        // HalForms.tabAddTab(tabName, title)
+        if (strcmp(func, "tabAddTab") == 0 && args->count >= 2) {
+            HcsValue* tab_v = eval_expression(rt, args->items[0]);
+            HcsValue* title_v = eval_expression(rt, args->items[1]);
+            char* tab_name = value_to_string(tab_v);
+            char* title = value_to_string(title_v);
+            halforms_rt_tab_add_tab(tab_name, title);
+            free(tab_name); free(title);
+            value_release(tab_v); value_release(title_v);
+            return value_null();
+        }
+        
+        // HalForms.showNotification(title, message, durationMs)
+        if (strcmp(func, "showNotification") == 0 && args->count >= 2) {
+            HcsValue* title_v = eval_expression(rt, args->items[0]);
+            HcsValue* msg_v = eval_expression(rt, args->items[1]);
+            char* title = value_to_string(title_v);
+            char* msg = value_to_string(msg_v);
+            int duration = args->count > 2 ? (int)value_to_number(eval_expression(rt, args->items[2])) : 3000;
+            extern void halforms_show_notification(const char*, const char*, int);
+            halforms_show_notification(title, msg, duration);
+            free(title); free(msg);
+            value_release(title_v); value_release(msg_v);
+            return value_null();
+        }
+        
+        // HalForms.clipboardSetText(text)
+        if (strcmp(func, "clipboardSetText") == 0 && args->count >= 1) {
+            HcsValue* text_v = eval_expression(rt, args->items[0]);
+            char* text = value_to_string(text_v);
+            extern bool halforms_clipboard_set_text(const char*);
+            bool result = halforms_clipboard_set_text(text);
+            free(text);
+            value_release(text_v);
+            return value_bool(result);
+        }
+        
+        // HalForms.clipboardGetText()
+        if (strcmp(func, "clipboardGetText") == 0) {
+            extern char* halforms_clipboard_get_text(void);
+            char* text = halforms_clipboard_get_text();
+            if (text) {
+                HcsValue* result = value_string(text);
+                free(text);
+                return result;
+            }
+            return value_null();
         }
     }
     
@@ -596,10 +1203,14 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
         }
     }
     
+    extern HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args);
+    HcsValue* sys_result = call_system_api(rt, name, args);
+    if (sys_result) return sys_result;
+    
     return NULL;
 }
 
-static HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node) {
+HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node) {
     if (!node) return value_null();
     switch (node->type) {
         case HCS_AST_NUMBER: return value_number(node->data.number_value);
@@ -731,6 +1342,105 @@ static HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node) {
                     char* s = strdup(obj->data.string);
                     for (char* p = s; *p; p++) *p = tolower(*p);
                     res = value_string(s); free(s);
+                } else if (strcmp(m, "toUpperCase") == 0) {
+                    char* s = strdup(obj->data.string);
+                    for (char* p = s; *p; p++) *p = toupper(*p);
+                    res = value_string(s); free(s);
+                } else if (strcmp(m, "toLowerCase") == 0) {
+                    char* s = strdup(obj->data.string);
+                    for (char* p = s; *p; p++) *p = tolower(*p);
+                    res = value_string(s); free(s);
+                } else if (strcmp(m, "trim") == 0) {
+                    char* s = strdup(obj->data.string);
+                    char* start = s;
+                    while (*start && isspace(*start)) start++;
+                    char* end = s + strlen(s) - 1;
+                    while (end > start && isspace(*end)) end--;
+                    *(end + 1) = '\0';
+                    res = value_string(start); free(s);
+                } else if (strcmp(m, "contains") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* search_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    char* search = value_to_string(search_v);
+                    res = value_bool(strstr(obj->data.string, search) != NULL);
+                    free(search); value_release(search_v);
+                } else if (strcmp(m, "startsWith") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* prefix_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    char* prefix = value_to_string(prefix_v);
+                    res = value_bool(strncmp(obj->data.string, prefix, strlen(prefix)) == 0);
+                    free(prefix); value_release(prefix_v);
+                } else if (strcmp(m, "endsWith") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* suffix_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    char* suffix = value_to_string(suffix_v);
+                    int slen = strlen(obj->data.string);
+                    int suflen = strlen(suffix);
+                    res = value_bool(slen >= suflen && strcmp(obj->data.string + slen - suflen, suffix) == 0);
+                    free(suffix); value_release(suffix_v);
+                } else if (strcmp(m, "indexOf") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* search_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    char* search = value_to_string(search_v);
+                    char* found = strstr(obj->data.string, search);
+                    res = value_number(found ? (found - obj->data.string) : -1);
+                    free(search); value_release(search_v);
+                } else if (strcmp(m, "substring") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* start_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    int start = (int)value_to_number(start_v);
+                    int len = strlen(obj->data.string);
+                    if (start < 0) start = 0;
+                    if (start > len) start = len;
+                    int end = len;
+                    if (node->data.method_call.args.count > 1) {
+                        HcsValue* end_v = eval_expression(rt, node->data.method_call.args.items[1]);
+                        end = (int)value_to_number(end_v);
+                        value_release(end_v);
+                        if (end > len) end = len;
+                        if (end < start) end = start;
+                    }
+                    char* sub = (char*)malloc(end - start + 1);
+                    strncpy(sub, obj->data.string + start, end - start);
+                    sub[end - start] = '\0';
+                    res = value_string(sub);
+                    free(sub);
+                    value_release(start_v);
+                } else if (strcmp(m, "replace") == 0 && node->data.method_call.args.count >= 2) {
+                    HcsValue* old_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    HcsValue* new_v = eval_expression(rt, node->data.method_call.args.items[1]);
+                    char* old_str = value_to_string(old_v);
+                    char* new_str = value_to_string(new_v);
+                    char* src = obj->data.string;
+                    int old_len = strlen(old_str);
+                    int new_len = strlen(new_str);
+                    int count = 0;
+                    char* p = src;
+                    while ((p = strstr(p, old_str)) != NULL) { count++; p += old_len; }
+                    int result_len = strlen(src) + count * (new_len - old_len);
+                    char* result = (char*)malloc(result_len + 1);
+                    char* dest = result;
+                    p = src;
+                    while (*p) {
+                        if (strncmp(p, old_str, old_len) == 0) {
+                            strcpy(dest, new_str);
+                            dest += new_len;
+                            p += old_len;
+                        } else {
+                            *dest++ = *p++;
+                        }
+                    }
+                    *dest = '\0';
+                    res = value_string(result);
+                    free(result); free(old_str); free(new_str);
+                    value_release(old_v); value_release(new_v);
+                } else if (strcmp(m, "split") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* delim_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                    char* delim = value_to_string(delim_v);
+                    res = value_array();
+                    char* str = strdup(obj->data.string);
+                    char* token = strtok(str, delim);
+                    while (token) {
+                        value_array_push(res, value_string(token));
+                        token = strtok(NULL, delim);
+                    }
+                    free(str); free(delim);
+                    value_release(delim_v);
                 }
             } else if (obj->type == HCS_VAL_ARRAY) {
                 if (strcmp(m, "push") == 0 && node->data.method_call.args.count > 0) {
@@ -740,6 +1450,101 @@ static HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node) {
                 } else if (strcmp(m, "pop") == 0 && obj->data.array.count > 0) {
                     res = value_copy(value_array_get(obj, obj->data.array.count - 1));
                     obj->data.array.count--;
+                } else if (strcmp(m, "shift") == 0 && obj->data.array.count > 0) {
+                    res = value_copy(value_array_get(obj, 0));
+                    for (int i = 0; i < obj->data.array.count - 1; i++) {
+                        obj->data.array.items[i] = obj->data.array.items[i + 1];
+                    }
+                    obj->data.array.count--;
+                } else if (strcmp(m, "unshift") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* item = eval_expression(rt, node->data.method_call.args.items[0]);
+                    if (obj->data.array.count >= obj->data.array.capacity) {
+                        int nc = obj->data.array.capacity == 0 ? 8 : obj->data.array.capacity * 2;
+                        obj->data.array.items = realloc(obj->data.array.items, sizeof(HcsValue*) * nc);
+                        obj->data.array.capacity = nc;
+                    }
+                    for (int i = obj->data.array.count; i > 0; i--) {
+                        obj->data.array.items[i] = obj->data.array.items[i - 1];
+                    }
+                    obj->data.array.items[0] = item;
+                    obj->data.array.count++;
+                    res = value_number(obj->data.array.count);
+                } else if (strcmp(m, "indexOf") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* search = eval_expression(rt, node->data.method_call.args.items[0]);
+                    int idx = -1;
+                    for (int i = 0; i < obj->data.array.count; i++) {
+                        if (value_equals(obj->data.array.items[i], search)) {
+                            idx = i;
+                            break;
+                        }
+                    }
+                    value_release(search);
+                    res = value_number(idx);
+                } else if (strcmp(m, "includes") == 0 && node->data.method_call.args.count > 0) {
+                    HcsValue* search = eval_expression(rt, node->data.method_call.args.items[0]);
+                    bool found = false;
+                    for (int i = 0; i < obj->data.array.count; i++) {
+                        if (value_equals(obj->data.array.items[i], search)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    value_release(search);
+                    res = value_bool(found);
+                } else if (strcmp(m, "join") == 0) {
+                    char* delim = ",";
+                    char* custom_delim = NULL;
+                    if (node->data.method_call.args.count > 0) {
+                        HcsValue* delim_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                        custom_delim = value_to_string(delim_v);
+                        delim = custom_delim;
+                        value_release(delim_v);
+                    }
+                    int total_len = 0;
+                    char** strs = (char**)malloc(sizeof(char*) * obj->data.array.count);
+                    for (int i = 0; i < obj->data.array.count; i++) {
+                        strs[i] = value_to_string(obj->data.array.items[i]);
+                        total_len += strlen(strs[i]);
+                    }
+                    total_len += strlen(delim) * (obj->data.array.count > 0 ? obj->data.array.count - 1 : 0);
+                    char* result = (char*)malloc(total_len + 1);
+                    result[0] = '\0';
+                    for (int i = 0; i < obj->data.array.count; i++) {
+                        if (i > 0) strcat(result, delim);
+                        strcat(result, strs[i]);
+                        free(strs[i]);
+                    }
+                    free(strs);
+                    res = value_string(result);
+                    free(result);
+                    if (custom_delim) free(custom_delim);
+                } else if (strcmp(m, "reverse") == 0) {
+                    for (int i = 0; i < obj->data.array.count / 2; i++) {
+                        HcsValue* tmp = obj->data.array.items[i];
+                        obj->data.array.items[i] = obj->data.array.items[obj->data.array.count - 1 - i];
+                        obj->data.array.items[obj->data.array.count - 1 - i] = tmp;
+                    }
+                    res = value_copy(obj);
+                } else if (strcmp(m, "slice") == 0) {
+                    int start = 0, end = obj->data.array.count;
+                    if (node->data.method_call.args.count > 0) {
+                        HcsValue* start_v = eval_expression(rt, node->data.method_call.args.items[0]);
+                        start = (int)value_to_number(start_v);
+                        value_release(start_v);
+                        if (start < 0) start = obj->data.array.count + start;
+                        if (start < 0) start = 0;
+                    }
+                    if (node->data.method_call.args.count > 1) {
+                        HcsValue* end_v = eval_expression(rt, node->data.method_call.args.items[1]);
+                        end = (int)value_to_number(end_v);
+                        value_release(end_v);
+                        if (end < 0) end = obj->data.array.count + end;
+                        if (end > obj->data.array.count) end = obj->data.array.count;
+                    }
+                    res = value_array();
+                    for (int i = start; i < end; i++) {
+                        value_array_push(res, value_copy(obj->data.array.items[i]));
+                    }
                 }
             }
             value_release(obj);
@@ -889,17 +1694,23 @@ void execute_statement(HcsRuntime* rt, HcsAstNode* node) {
             for (int i = 0; i < node->data.print.values.count; i++) {
                 HcsValue* v = eval_expression(rt, node->data.print.values.items[i]);
                 char* s = value_to_string(v);
+                
+                // Use printf for simple console output
                 printf("%s", s);
-                if (i < node->data.print.values.count - 1) printf(" ");
+                
+                if (i < node->data.print.values.count - 1) {
+                    printf(" ");
+                }
                 free(s); value_release(v);
             }
             printf("\n");
+            fflush(stdout);
             break;
         }
         case HCS_AST_ALERT: {
             HcsValue* msg = eval_expression(rt, node->data.alert.message);
             char* ms = value_to_string(msg);
-            MessageBoxA(NULL, ms, "HalcyonScript", MB_OK | MB_ICONINFORMATION);
+            msgbox_utf8(ms, "HalcyonScript", MB_OK | MB_ICONINFORMATION);
             free(ms); value_release(msg);
             break;
         }
@@ -976,18 +1787,7 @@ void execute_statement(HcsRuntime* rt, HcsAstNode* node) {
 void runtime_execute(HcsRuntime* rt, HcsAstNode* program) {
     if (!program || program->type != HCS_AST_PROGRAM) return;
     
-    FILE* log = fopen("debug.log", "a");
-    if (log) {
-        fprintf(log, "[RUNTIME_EXECUTE] Program has %d statements\n", program->data.program.statements.count);
-        fclose(log);
-    }
-    
     for (int i = 0; i < program->data.program.statements.count; i++) {
-        log = fopen("debug.log", "a");
-        if (log) {
-            fprintf(log, "[RUNTIME_EXECUTE] Statement %d type=%d\n", i, program->data.program.statements.items[i]->type);
-            fclose(log);
-        }
         execute_statement(rt, program->data.program.statements.items[i]);
         if (!rt->running) break;
     }

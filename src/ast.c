@@ -1,5 +1,7 @@
 /*
- * HalcyonScript - AST implementation
+ * HalcyonScript © KAInaps 2026 
+   Simple programming for creative minds 
+   github.com/Nicetink/HalcyonScript
  */
 
 #include "ast.h"

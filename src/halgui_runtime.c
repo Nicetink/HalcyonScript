@@ -325,6 +325,11 @@ void halgui_create_control(HcsRuntime* rt, HcsAstNode* node) {
         widget = hal_panel_create(parent);
         wtype = HAL_WIDGET_PANEL;
     }
+    else if (strcmp(type, "calendar") == 0) {
+        widget = hal_calendar_create(parent);
+        wtype = HAL_WIDGET_CUSTOM;
+        hal_widget_on(widget, HAL_EVENT_CHANGE, on_widget_change, (void*)strdup(name));
+    }
     
     if (widget) {
         hal_widget_set_bounds(widget, x, y, w, h);
@@ -875,4 +880,170 @@ void halgui_audio_cleanup(void) {
     g_audio_player_capacity = 0;
     
     hal_audio_shutdown();
+}
+
+
+/* ============================================
+   Extended Widgets - New in 0.18.26
+   ============================================ */
+
+/* TreeView */
+extern HalWidget* hal_treeview_create(HalWidget* parent);
+extern void* hal_treeview_add_node(HalWidget* tree, void* parent, const char* text, void* userData);
+extern void hal_treeview_expand(HalWidget* tree, void* node);
+extern void hal_treeview_collapse(HalWidget* tree, void* node);
+
+void halgui_create_treeview(const char* name) {
+    HalWidget* parent = g_halgui.main_window ? (HalWidget*)g_halgui.main_window : NULL;
+    HalWidget* tree = hal_treeview_create(parent);
+    halgui_add_widget(name, tree, HAL_WIDGET_LIST);
+}
+
+/* DataGrid */
+extern HalWidget* hal_datagrid_create(HalWidget* parent);
+extern void hal_datagrid_add_column(HalWidget* grid, const char* name, int width, int align);
+extern void hal_datagrid_add_row(HalWidget* grid, const char** cells, void* userData);
+extern void hal_datagrid_clear(HalWidget* grid);
+
+void halgui_create_datagrid(const char* name) {
+    HalWidget* parent = g_halgui.main_window ? (HalWidget*)g_halgui.main_window : NULL;
+    HalWidget* grid = hal_datagrid_create(parent);
+    halgui_add_widget(name, grid, HAL_WIDGET_LIST);
+}
+
+void halgui_datagrid_add_column(const char* name, const char* colName, int width) {
+    HalWidget* grid = halgui_find_widget(name);
+    if (grid) {
+        hal_datagrid_add_column(grid, colName, width, HAL_ALIGN_LEFT);
+    }
+}
+
+/* Chart */
+extern HalWidget* hal_chart_create(HalWidget* parent, int type);
+extern void hal_chart_add_series(HalWidget* chart, const char* label, float* values, int count, uint32_t color);
+extern void hal_chart_set_title(HalWidget* chart, const char* title);
+
+void halgui_create_chart(const char* name, const char* type) {
+    HalWidget* parent = g_halgui.main_window ? (HalWidget*)g_halgui.main_window : NULL;
+    int chartType = 0;  // LINE
+    if (strcmp(type, "bar") == 0) chartType = 1;
+    else if (strcmp(type, "pie") == 0) chartType = 2;
+    else if (strcmp(type, "area") == 0) chartType = 3;
+    
+    HalWidget* chart = hal_chart_create(parent, chartType);
+    halgui_add_widget(name, chart, HAL_WIDGET_CANVAS);
+}
+
+void halgui_chart_set_title(const char* name, const char* title) {
+    HalWidget* chart = halgui_find_widget(name);
+    if (chart) {
+        hal_chart_set_title(chart, title);
+    }
+}
+
+/* Calendar */
+extern HalWidget* hal_calendar_create(HalWidget* parent);
+extern void hal_calendar_set_date(HalWidget* cal, int year, int month, int day);
+extern void hal_calendar_get_date(HalWidget* cal, int* year, int* month, int* day);
+
+void halgui_create_calendar(const char* name) {
+    HalWidget* parent = g_halgui.main_window ? (HalWidget*)g_halgui.main_window : NULL;
+    HalWidget* cal = hal_calendar_create(parent);
+    halgui_add_widget(name, cal, HAL_WIDGET_CUSTOM);
+}
+
+void halgui_calendar_set_date(const char* name, int year, int month, int day) {
+    HalWidget* cal = halgui_find_widget(name);
+    if (cal) {
+        hal_calendar_set_date(cal, year, month, day);
+    }
+}
+
+/* Notification */
+extern HalWidget* hal_notification_create(HalWindow* window, const char* title, const char* message, int type, int durationMs);
+extern void hal_notification_show(HalWidget* notif);
+
+void halgui_show_notification(const char* title, const char* message, const char* type, int duration) {
+    int notifType = 0;  // INFO
+    if (strcmp(type, "success") == 0) notifType = 1;
+    else if (strcmp(type, "warning") == 0) notifType = 2;
+    else if (strcmp(type, "error") == 0) notifType = 3;
+    
+    HalWidget* notif = hal_notification_create(g_halgui.main_window, title, message, notifType, duration);
+    hal_notification_show(notif);
+}
+
+/* Context Menu */
+extern HalWidget* hal_contextmenu_create(void);
+extern void hal_contextmenu_add_item(HalWidget* menu, const char* text, void* callback, void* userData);
+extern void hal_contextmenu_add_separator(HalWidget* menu);
+extern void hal_contextmenu_show(HalWidget* menu, int x, int y);
+
+void halgui_create_contextmenu(const char* name) {
+    HalWidget* menu = hal_contextmenu_create();
+    halgui_add_widget(name, menu, HAL_WIDGET_MENU);
+}
+
+void halgui_contextmenu_add_item(const char* name, const char* text) {
+    HalWidget* menu = halgui_find_widget(name);
+    if (menu) {
+        hal_contextmenu_add_item(menu, text, NULL, NULL);
+    }
+}
+
+void halgui_contextmenu_show(const char* name, int x, int y) {
+    HalWidget* menu = halgui_find_widget(name);
+    if (menu) {
+        hal_contextmenu_show(menu, x, y);
+    }
+}
+
+/* Tooltip */
+extern HalWidget* hal_tooltip_create(HalWidget* target, const char* text);
+extern void hal_tooltip_set_text(HalWidget* tooltip, const char* text);
+
+void halgui_set_tooltip(const char* widgetName, const char* text) {
+    HalWidget* widget = halgui_find_widget(widgetName);
+    if (widget) {
+        (void)hal_tooltip_create(widget, text);
+        // Tooltip is automatically managed by HalGUI
+    }
+}
+
+/* Rich Text Editor */
+extern HalWidget* hal_richtexteditor_create(HalWidget* parent);
+extern void hal_richtexteditor_set_style(HalWidget* editor, uint32_t style);
+extern void hal_richtexteditor_set_font_size(HalWidget* editor, int size);
+extern void hal_richtexteditor_set_text_color(HalWidget* editor, uint32_t color);
+
+void halgui_create_richtexteditor(const char* name) {
+    HalWidget* parent = g_halgui.main_window ? (HalWidget*)g_halgui.main_window : NULL;
+    HalWidget* editor = hal_richtexteditor_create(parent);
+    halgui_add_widget(name, editor, HAL_WIDGET_TEXTAREA);
+}
+
+void halgui_richtexteditor_set_bold(const char* name, bool bold) {
+    HalWidget* editor = halgui_find_widget(name);
+    if (editor) {
+        hal_richtexteditor_set_style(editor, bold ? 1 : 0);
+    }
+}
+
+void halgui_richtexteditor_set_font_size(const char* name, int size) {
+    HalWidget* editor = halgui_find_widget(name);
+    if (editor) {
+        hal_richtexteditor_set_font_size(editor, size);
+    }
+}
+
+
+HcsValue* halgui_dialog_select_folder(HcsRuntime* rt, const char* title) {
+    (void)rt;
+    char* folder = hal_dialog_select_folder(NULL, title);
+    if (folder) {
+        HcsValue* result = value_string(folder);
+        free(folder);
+        return result;
+    }
+    return value_null();
 }

@@ -9,7 +9,7 @@
 #include <string.h>
 #include <mmsystem.h>
 
-#pragma comment(lib, "winmm.lib")
+/* Note: Link with winmm.lib - handled in build script */
 
 /* Maximum number of audio players */
 #define MAX_AUDIO_PLAYERS 16

@@ -835,6 +835,23 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
                 }
             }
             
+            // Handle calendar clicks
+            if (target->type == HAL_WIDGET_CUSTOM) {
+                extern bool hal_calendar_handle_click(HalWidget* cal, int mouseX, int mouseY);
+                if (hal_calendar_handle_click(target, event->mouseX, event->mouseY)) {
+                    // Calendar handled the click, invalidate to trigger redraw
+                    float scale = hal_get_dpi_scale();
+                    RECT rect = {
+                        (LONG)(target->bounds.x * scale),
+                        (LONG)(target->bounds.y * scale),
+                        (LONG)((target->bounds.x + target->bounds.width) * scale),
+                        (LONG)((target->bounds.y + target->bounds.height) * scale)
+                    };
+                    InvalidateRect(window->hwnd, &rect, FALSE);
+                    UpdateWindow(window->hwnd);
+                }
+            }
+            
             // Fire click event
             HalEvent clickEvent = *event;
             clickEvent.type = HAL_EVENT_CLICK;
@@ -852,29 +869,45 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
         
         if (lastHover && lastHover != target) {
             lastHover->state &= ~HAL_STATE_HOVER;
-            // Only invalidate the specific widget area, not the whole window
-            float scale = hal_get_dpi_scale();
-            RECT rect = {
-                (LONG)(lastHover->bounds.x * scale),
-                (LONG)(lastHover->bounds.y * scale),
-                (LONG)((lastHover->bounds.x + lastHover->bounds.width) * scale),
-                (LONG)((lastHover->bounds.y + lastHover->bounds.height) * scale)
-            };
-            InvalidateRect(window->hwnd, &rect, FALSE);
+            // Only invalidate widgets that have visual hover effects
+            // Buttons, inputs, checkboxes, toggles, sliders need hover redraws
+            // Calendar (CUSTOM) and labels don't need hover effects
+            if (lastHover->type == HAL_WIDGET_BUTTON || 
+                lastHover->type == HAL_WIDGET_INPUT ||
+                lastHover->type == HAL_WIDGET_CHECKBOX ||
+                lastHover->type == HAL_WIDGET_TOGGLE ||
+                lastHover->type == HAL_WIDGET_SLIDER ||
+                lastHover->type == HAL_WIDGET_TABS) {
+                float scale = hal_get_dpi_scale();
+                RECT rect = {
+                    (LONG)(lastHover->bounds.x * scale),
+                    (LONG)(lastHover->bounds.y * scale),
+                    (LONG)((lastHover->bounds.x + lastHover->bounds.width) * scale),
+                    (LONG)((lastHover->bounds.y + lastHover->bounds.height) * scale)
+                };
+                InvalidateRect(window->hwnd, &rect, FALSE);
+            }
         }
         
         if (target && target != (HalWidget*)window) {
             target->state |= HAL_STATE_HOVER;
             lastHover = target;
-            // Only invalidate the specific widget area, not the whole window
-            float scale = hal_get_dpi_scale();
-            RECT rect = {
-                (LONG)(target->bounds.x * scale),
-                (LONG)(target->bounds.y * scale),
-                (LONG)((target->bounds.x + target->bounds.width) * scale),
-                (LONG)((target->bounds.y + target->bounds.height) * scale)
-            };
-            InvalidateRect(window->hwnd, &rect, FALSE);
+            // Only invalidate widgets that have visual hover effects
+            if (target->type == HAL_WIDGET_BUTTON || 
+                target->type == HAL_WIDGET_INPUT ||
+                target->type == HAL_WIDGET_CHECKBOX ||
+                target->type == HAL_WIDGET_TOGGLE ||
+                target->type == HAL_WIDGET_SLIDER ||
+                target->type == HAL_WIDGET_TABS) {
+                float scale = hal_get_dpi_scale();
+                RECT rect = {
+                    (LONG)(target->bounds.x * scale),
+                    (LONG)(target->bounds.y * scale),
+                    (LONG)((target->bounds.x + target->bounds.width) * scale),
+                    (LONG)((target->bounds.y + target->bounds.height) * scale)
+                };
+                InvalidateRect(window->hwnd, &rect, FALSE);
+            }
         } else {
             lastHover = NULL;
         }

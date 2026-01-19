@@ -1,19 +1,19 @@
 /*
- * HalcyonScript - Lexer implementation
+ * HalcyonScript © KAInaps 2026 
+   Simple programming for creative minds 
+   github.com/Nicetink/HalcyonScript
  */
 
 #include "lexer.h"
 #include <string.h>
 #include <ctype.h>
 
-/* Keyword lookup table */
 typedef struct {
     const char* keyword;
     HcsTokenType type;
 } KeywordEntry;
 
 static KeywordEntry keywords[] = {
-    /* UI Controls */
     {"create", HCS_TOK_CREATE}, {"window", HCS_TOK_WINDOW}, {"button", HCS_TOK_BUTTON},
     {"label", HCS_TOK_LABEL}, {"input", HCS_TOK_INPUT}, {"listbox", HCS_TOK_LISTBOX},
     {"checkbox", HCS_TOK_CHECKBOX}, {"image", HCS_TOK_IMAGE}, {"panel", HCS_TOK_PANEL},
@@ -24,10 +24,10 @@ static KeywordEntry keywords[] = {
     {"toolbar", HCS_TOK_TOOLBAR}, {"statusbar", HCS_TOK_STATUSBAR}, {"treeview", HCS_TOK_TREEVIEW},
     {"tree", HCS_TOK_TREEVIEW}, {"table", HCS_TOK_TABLE}, {"grid", HCS_TOK_TABLE},
     {"canvas", HCS_TOK_CANVAS}, {"splitter", HCS_TOK_SPLITTER}, {"tooltip", HCS_TOK_TOOLTIP},
-    {"dialog", HCS_TOK_DIALOG},
+    {"dialog", HCS_TOK_DIALOG}, {"calendar", HCS_TOK_CALENDAR},
     
     /* Events */
-    {"when", HCS_TOK_WHEN}, {"clicked", HCS_TOK_CLICKED}, {"click", HCS_TOK_CLICKED},
+    {"when", HCS_TOK_WHEN}, {"on", HCS_TOK_WHEN}, {"clicked", HCS_TOK_CLICKED}, {"click", HCS_TOK_CLICKED},
     {"changed", HCS_TOK_CHANGED}, {"change", HCS_TOK_CHANGED}, {"started", HCS_TOK_STARTED},
     {"checked", HCS_TOK_CHECKED}, {"closed", HCS_TOK_CLOSED}, {"resized", HCS_TOK_RESIZED},
     {"resize", HCS_TOK_RESIZED}, {"keydown", HCS_TOK_KEYDOWN}, {"keyup", HCS_TOK_KEYUP},
@@ -38,8 +38,6 @@ static KeywordEntry keywords[] = {
     {"scroll", HCS_TOK_SCROLL}, {"drag", HCS_TOK_DRAG}, {"drop", HCS_TOK_DROP},
     {"timer", HCS_TOK_TIMER}, {"tick", HCS_TOK_TICK}, {"selected", HCS_TOK_SELECTED},
     {"hover", HCS_TOK_HOVER},
-    
-    /* Actions */
     {"show", HCS_TOK_SHOW}, {"hide", HCS_TOK_HIDE}, {"close", HCS_TOK_CLOSE},
     {"open", HCS_TOK_OPEN}, {"minimize", HCS_TOK_MINIMIZE}, {"maximize", HCS_TOK_MAXIMIZE},
     {"restore", HCS_TOK_RESTORE}, {"set", HCS_TOK_SET}, {"get", HCS_TOK_GET},
@@ -49,8 +47,6 @@ static KeywordEntry keywords[] = {
     {"play", HCS_TOK_PLAY}, {"pause", HCS_TOK_PAUSE}, {"stop", HCS_TOK_STOP},
     {"resume", HCS_TOK_RESUME}, {"seek", HCS_TOK_SEEK}, {"load", HCS_TOK_LOAD},
     {"start", HCS_TOK_START}, {"interval", HCS_TOK_INTERVAL}, {"timeout", HCS_TOK_TIMEOUT},
-    
-    /* Control flow */
     {"if", HCS_TOK_IF}, {"else", HCS_TOK_ELSE}, {"elseif", HCS_TOK_ELSEIF},
     {"elif", HCS_TOK_ELSEIF}, {"while", HCS_TOK_WHILE}, {"for", HCS_TOK_FOR},
     {"from", HCS_TOK_FROM}, {"to", HCS_TOK_TO}, {"step", HCS_TOK_STEP},
@@ -59,14 +55,10 @@ static KeywordEntry keywords[] = {
     {"export", HCS_TOK_EXPORT}, {"class", HCS_TOK_CLASS}, {"new", HCS_TOK_NEW},
     {"this", HCS_TOK_THIS}, {"extends", HCS_TOK_EXTENDS}, {"switch", HCS_TOK_SWITCH},
     {"case", HCS_TOK_CASE}, {"default", HCS_TOK_DEFAULT}, {"in", HCS_TOK_IN},
-    
-    /* Variables */
     {"var", HCS_TOK_VAR}, {"const", HCS_TOK_CONST}, {"let", HCS_TOK_LET},
     {"global", HCS_TOK_GLOBAL}, {"true", HCS_TOK_TRUE}, {"false", HCS_TOK_FALSE},
     {"null", HCS_TOK_NULL}, {"none", HCS_TOK_NULL}, {"and", HCS_TOK_AND},
     {"or", HCS_TOK_OR}, {"not", HCS_TOK_NOT}, {"is", HCS_TOK_IS}, {"as", HCS_TOK_AS},
-    
-    /* I/O */
     {"print", HCS_TOK_PRINT}, {"log", HCS_TOK_LOG}, {"debug", HCS_TOK_DEBUG},
     {"alert", HCS_TOK_ALERT}, {"confirm", HCS_TOK_CONFIRM}, {"prompt", HCS_TOK_PROMPT},
     {"read", HCS_TOK_READ}, {"write", HCS_TOK_WRITE}, {"append", HCS_TOK_APPEND},
@@ -76,21 +68,14 @@ static KeywordEntry keywords[] = {
     {"wait", HCS_TOK_WAIT}, {"async", HCS_TOK_ASYNC}, {"await", HCS_TOK_AWAIT},
     {"parallel", HCS_TOK_PARALLEL}, {"try", HCS_TOK_TRY}, {"catch", HCS_TOK_CATCH},
     {"throw", HCS_TOK_THROW}, {"finally", HCS_TOK_FINALLY},
-    
-    /* Data */
     {"json", HCS_TOK_JSON}, {"parse", HCS_TOK_PARSE}, {"stringify", HCS_TOK_STRINGIFY},
     {"encode", HCS_TOK_ENCODE}, {"decode", HCS_TOK_DECODE}, {"regex", HCS_TOK_REGEX},
     {"match", HCS_TOK_MATCH}, {"test", HCS_TOK_TEST}, {"search", HCS_TOK_SEARCH},
-    
-    /* System */
     {"run", HCS_TOK_RUN}, {"exec", HCS_TOK_EXEC}, {"shell", HCS_TOK_SHELL},
     {"exit", HCS_TOK_EXIT}, {"env", HCS_TOK_ENV}, {"clipboard", HCS_TOK_CLIPBOARD},
     {"notify", HCS_TOK_NOTIFY}, {"beep", HCS_TOK_BEEP},
-    
     {NULL, HCS_TOK_UNKNOWN}
 };
-
-/* Helper functions */
 static char lexer_current(HcsLexer* l) {
     return l->position < l->length ? l->source[l->position] : '\0';
 }
@@ -142,37 +127,20 @@ void lexer_free(HcsLexer* lexer) {
 static void skip_whitespace_and_comments(HcsLexer* l) {
     while (l->position < l->length) {
         char c = lexer_current(l);
-        
-        if (c == ' ' || c == '\t' || c == '\r') {
-            lexer_advance(l);
-            continue;
-        }
-        
-        /* Single-line comment // or # */
+        if (c == ' ' || c == '\t' || c == '\r') { lexer_advance(l); continue; }
         if ((c == '/' && lexer_peek(l) == '/') || c == '#') {
-            while (l->position < l->length && lexer_current(l) != '\n') {
-                lexer_advance(l);
-            }
+            while (l->position < l->length && lexer_current(l) != '\n') lexer_advance(l);
             continue;
         }
-        
-        /* Multi-line comment */
         if (c == '/' && lexer_peek(l) == '*') {
             lexer_advance(l); lexer_advance(l);
             while (l->position < l->length) {
-                if (lexer_current(l) == '*' && lexer_peek(l) == '/') {
-                    lexer_advance(l); lexer_advance(l);
-                    break;
-                }
-                if (lexer_current(l) == '\n') {
-                    l->line++;
-                    l->column = 0;
-                }
+                if (lexer_current(l) == '*' && lexer_peek(l) == '/') { lexer_advance(l); lexer_advance(l); break; }
+                if (lexer_current(l) == '\n') { l->line++; l->column = 0; }
                 lexer_advance(l);
             }
             continue;
         }
-        
         break;
     }
 }

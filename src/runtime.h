@@ -66,6 +66,7 @@ HcsRuntime* runtime_create(void);
 void runtime_free(HcsRuntime* rt);
 void runtime_execute(HcsRuntime* rt, HcsAstNode* program);
 void execute_statement(HcsRuntime* rt, HcsAstNode* node);
+HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node);
 HcsValue* runtime_eval(HcsRuntime* rt, HcsAstNode* node);
 
 HcsScope* scope_create(HcsScope* parent);

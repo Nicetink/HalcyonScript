@@ -21,15 +21,14 @@
 
 /* Attach to parent console or create new one for output */
 static void init_console(void) {
-    // When launched from ProcessBuilder, we don't have a parent console
-    // Just ensure stdout/stderr are properly set up
-    // Don't call AttachConsole or AllocConsole - they interfere with pipe redirection
+    // Set UTF-8 code page for proper Russian/Unicode text output
+    SetConsoleOutputCP(65001);  // CP_UTF8
+    SetConsoleCP(65001);
     
-    // Set UTF-8 output
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
+    // Set locale for proper UTF-8 handling
+    setlocale(LC_ALL, ".UTF-8");
     
-    // Disable buffering for stdout and stderr
+    // Disable buffering for immediate output
     setvbuf(stdout, NULL, _IONBF, 0);
     setvbuf(stderr, NULL, _IONBF, 0);
 }
@@ -350,7 +349,8 @@ static bool copy_file_to(const char* src, const char* dst) {
 /* Create directory recursively */
 static void create_dir_recursive(const char* path) {
     char tmp[MAX_PATH];
-    strncpy(tmp, path, MAX_PATH);
+    strncpy(tmp, path, MAX_PATH - 1);
+    tmp[MAX_PATH - 1] = '\0';
     for (char* p = tmp + 1; *p; p++) {
         if (*p == '\\' || *p == '/') {
             *p = '\0';
@@ -446,18 +446,18 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Create output directory */
-    char dist_dir[MAX_PATH];
+    char dist_dir[512];  /* Increased buffer size to avoid truncation warnings */
     snprintf(dist_dir, sizeof(dist_dir), "%s\\dist", proj->project_dir);
     create_dir_recursive(dist_dir);
     
     /* Create temp build directory */
-    char build_dir[MAX_PATH];
+    char build_dir[512];  /* Increased buffer size */
     snprintf(build_dir, sizeof(build_dir), "%s\\build_temp", proj->project_dir);
     create_dir_recursive(build_dir);
     
-    /* Get halcyon.exe location (for launcher source) */
+    /* Get HalcyonRT.exe location (for launcher source) */
     char* exe_dir = get_exe_directory();
-    char launcher_src[MAX_PATH];
+    char launcher_src[512];  /* Increased buffer size */
     snprintf(launcher_src, sizeof(launcher_src), "%s\\launcher\\launcher.c", exe_dir);
     
     /* Check if we can build launcher (need gcc and windres) */
@@ -484,7 +484,7 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Create app.halproj for embedding */
-    char config_path[MAX_PATH];
+    char config_path[512];  /* Increased buffer size */
     snprintf(config_path, sizeof(config_path), "%s\\app.halproj", build_dir);
     
     FILE* f = fopen(config_path, "w");
@@ -518,7 +518,7 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Create scripts bundle */
-    char bundle_path[MAX_PATH];
+    char bundle_path[512];  /* Increased buffer size */
     snprintf(bundle_path, sizeof(bundle_path), "%s\\scripts.bundle", build_dir);
     
     if (!create_scripts_bundle(proj, bundle_path)) {
@@ -537,8 +537,8 @@ static int build_project(const char* proj_path) {
         fflush(stdout);
         
         /* Copy halcyon.ico to build directory */
-        char icon_src[MAX_PATH];
-        char icon_dst[MAX_PATH];
+        char icon_src[512];  /* Increased buffer size */
+        char icon_dst[512];  /* Increased buffer size */
         snprintf(icon_src, sizeof(icon_src), "%s\\logo\\halcyon.ico", exe_dir);
         snprintf(icon_dst, sizeof(icon_dst), "%s\\halcyon.ico", build_dir);
         
@@ -567,7 +567,7 @@ static int build_project(const char* proj_path) {
         }
         
         /* Create resource file */
-        char rc_path[MAX_PATH];
+        char rc_path[512];  /* Increased buffer size */
         snprintf(rc_path, sizeof(rc_path), "%s\\launcher.rc", build_dir);
         
         f = fopen(rc_path, "w");
@@ -587,7 +587,7 @@ static int build_project(const char* proj_path) {
         
         /* Compile resources */
         char cmd[MAX_PATH * 4];
-        char res_obj[MAX_PATH];
+        char res_obj[512];  /* Increased buffer size */
         snprintf(res_obj, sizeof(res_obj), "%s\\launcher_res.o", build_dir);
         
         /* Change to build directory for windres */
@@ -618,8 +618,8 @@ static int build_project(const char* proj_path) {
                 can_build_launcher = false;
             } else {
                 /* Copy compiled exe to dist */
-                char src_exe[MAX_PATH];
-                char dst_exe[MAX_PATH];
+                char src_exe[512];  /* Increased buffer size */
+                char dst_exe[512];  /* Increased buffer size */
                 snprintf(src_exe, sizeof(src_exe), "%s\\%s.exe", build_dir, proj->name);
                 snprintf(dst_exe, sizeof(dst_exe), "%s\\%s.exe", dist_dir, proj->name);
                 
@@ -640,15 +640,15 @@ static int build_project(const char* proj_path) {
         /* Fallback: create portable package with runtime + scripts */
         
         /* Create scripts directory */
-        char scripts_dir[MAX_PATH];
+        char scripts_dir[512];  /* Increased buffer size */
         snprintf(scripts_dir, sizeof(scripts_dir), "%s\\scripts", dist_dir);
         create_dir_recursive(scripts_dir);
         
-        /* Copy halcyon.exe as runtime */
-        char halcyon_exe[MAX_PATH];
-        snprintf(halcyon_exe, sizeof(halcyon_exe), "%s\\halcyon.exe", exe_dir);
+        /* Copy HalcyonRT.exe as runtime */
+        char halcyon_exe[512];  /* Increased buffer size */
+        snprintf(halcyon_exe, sizeof(halcyon_exe), "%s\\HalcyonRT.exe", exe_dir);
         
-        char runtime_path[MAX_PATH];
+        char runtime_path[512];  /* Increased buffer size */
         snprintf(runtime_path, sizeof(runtime_path), "%s\\halcyon_runtime.exe", dist_dir);
         
         if (!copy_file_to(halcyon_exe, runtime_path)) {
@@ -660,8 +660,8 @@ static int build_project(const char* proj_path) {
         printf("  + halcyon_runtime.exe\n");
         
         /* Copy halcyon.ico for window icons */
-        char icon_src[MAX_PATH];
-        char icon_dst[MAX_PATH];
+        char icon_src[512];  /* Increased buffer size */
+        char icon_dst[512];  /* Increased buffer size */
         snprintf(icon_src, sizeof(icon_src), "%s\\logo\\halcyon.ico", exe_dir);
         snprintf(icon_dst, sizeof(icon_dst), "%s\\halcyon.ico", dist_dir);
         
@@ -687,7 +687,7 @@ static int build_project(const char* proj_path) {
                 if (*p == '/') *p = '\\';
             }
             
-            char dst_path[MAX_PATH];
+            char dst_path[512];  /* Increased buffer size */
             snprintf(dst_path, sizeof(dst_path), "%s\\%s", scripts_dir, normalized_file);
             
             char* last_sep = strrchr(dst_path, '\\');
@@ -721,7 +721,7 @@ static int build_project(const char* proj_path) {
                     if (*p == '/') *p = '\\';
                 }
                 
-                char dst_path[MAX_PATH];
+                char dst_path[512];  /* Increased buffer size */
                 snprintf(dst_path, sizeof(dst_path), "%s\\%s", scripts_dir, normalized_entry);
                 
                 char* last_sep = strrchr(dst_path, '\\');
@@ -739,13 +739,13 @@ static int build_project(const char* proj_path) {
         }
         
         /* Copy app.halproj to dist */
-        char dist_config[MAX_PATH];
+        char dist_config[512];  /* Increased buffer size */
         snprintf(dist_config, sizeof(dist_config), "%s\\app.halproj", dist_dir);
         copy_file_to(config_path, dist_config);
         printf("  + app.halproj\n");
         
         /* Create main exe (copy of runtime) */
-        char exe_path[MAX_PATH];
+        char exe_path[512];  /* Increased buffer size */
         snprintf(exe_path, sizeof(exe_path), "%s\\%s.exe", dist_dir, proj->name);
         copy_file_to(runtime_path, exe_path);
         printf("  + %s.exe\n", proj->name);

@@ -487,6 +487,15 @@ void hal_render_widget_offset(HalWindow* window, HalWidget* widget, GpGraphics g
         return;  // Native EDIT control handles its own rendering
     }
     
+    // Extended widgets rendering - declare external functions
+    extern void hal_treeview_render(HalWidget* tree, HDC hdc, HalTheme* theme);
+    extern void hal_datagrid_render(HalWidget* grid, HDC hdc, HalTheme* theme);
+    extern void hal_chart_render(HalWidget* chart, HDC hdc, HalTheme* theme);
+    extern void hal_calendar_render(HalWidget* cal, HDC hdc, HalTheme* theme);
+    extern void hal_notification_render(HalWidget* notif, HDC hdc, HalTheme* theme);
+    
+    HalTheme* theme = window->theme;
+    
     switch (widget->type) {
         case HAL_WIDGET_PANEL: hal_render_panel_aa(window, widget, g, offsetX, offsetY); break;
         case HAL_WIDGET_BUTTON: hal_render_button_aa(window, widget, g, offsetX, offsetY); break;
@@ -496,6 +505,33 @@ void hal_render_widget_offset(HalWindow* window, HalWidget* widget, GpGraphics g
         case HAL_WIDGET_TOGGLE: hal_render_toggle_aa(window, widget, g, offsetX, offsetY); break;
         case HAL_WIDGET_SLIDER: hal_render_slider_aa(window, widget, g, offsetX, offsetY); break;
         case HAL_WIDGET_PROGRESS: hal_render_progress_aa(window, widget, g, offsetX, offsetY); break;
+        case HAL_WIDGET_LIST: {
+            // TreeView or DataGrid - render to backbuffer
+            if (widget->data) {
+                hal_treeview_render(widget, window->backBufferDC, theme);
+                hal_datagrid_render(widget, window->backBufferDC, theme);
+            }
+            // Render children
+            for (int i = 0; i < widget->childCount; i++) {
+                hal_render_widget_offset(window, widget->children[i], g, offsetX + widget->bounds.x, offsetY + widget->bounds.y);
+            }
+            break;
+        }
+        case HAL_WIDGET_CANVAS: {
+            // Chart widget - render to backbuffer
+            hal_chart_render(widget, window->backBufferDC, theme);
+            break;
+        }
+        case HAL_WIDGET_CUSTOM: {
+            // Calendar widget - render to backbuffer
+            hal_calendar_render(widget, window->backBufferDC, theme);
+            break;
+        }
+        case HAL_WIDGET_DIALOG: {
+            // Notification widget - render to backbuffer
+            hal_notification_render(widget, window->backBufferDC, theme);
+            break;
+        }
         default:
             for (int i = 0; i < widget->childCount; i++) hal_render_widget_offset(window, widget->children[i], g, offsetX, offsetY);
             break;
@@ -533,4 +569,47 @@ void hal_render_window(HalWindow* window) {
     for (int i = 0; i < window->base.childCount; i++) hal_render_widget_offset(window, window->base.children[i], g, 0, 0);
     
     pfnGdipDeleteGraphics(g);
+}
+
+
+/* ============================================
+   Helper Functions for Extended Widgets
+   ============================================ */
+
+void* hal_get_graphics_from_hdc(HDC hdc) {
+    if (!g_gdiplusInitialized) hal_gdiplus_init();
+    GpGraphics g = NULL;
+    if (pfnGdipCreateFromHDC(hdc, &g) != 0) return NULL;
+    pfnGdipSetSmoothingMode(g, SmoothingModeAntiAlias);
+    pfnGdipSetTextRenderingHint(g, TextRenderingHintClearTypeGridFit);
+    return g;
+}
+
+void hal_release_graphics(void* graphics) {
+    if (graphics) {
+        pfnGdipDeleteGraphics((GpGraphics)graphics);
+    }
+}
+
+void hal_render_rounded_rect(void* graphics, float x, float y, float w, float h, float radius, uint32_t color, bool fill) {
+    if (!graphics) return;
+    hal_draw_rounded_rect_aa((GpGraphics)graphics, x, y, w, h, radius, 
+                            fill ? color : HAL_RGBA(0,0,0,0), 
+                            fill ? HAL_RGBA(0,0,0,0) : color, 
+                            fill ? 0 : 1.0f);
+}
+
+void hal_render_text(void* graphics, const char* text, float x, float y, float w, float h, uint32_t color, int align) {
+    if (!graphics || !text) return;
+    HalAlignment halign = (align == 0) ? HAL_ALIGN_LEFT : (align == 1) ? HAL_ALIGN_CENTER : HAL_ALIGN_RIGHT;
+    hal_draw_text_aa((GpGraphics)graphics, text, x, y, w, h, color, halign, HAL_ALIGN_MIDDLE, 14.0f);
+}
+
+void hal_render_line(void* graphics, float x1, float y1, float x2, float y2, uint32_t color, float width) {
+    if (!graphics) return;
+    GpPen pen = NULL;
+    if (pfnGdipCreatePen1(hal_to_argb(color), width, UnitPixel, &pen) == 0) {
+        pfnGdipDrawLine((GpGraphics)graphics, pen, x1, y1, x2, y2);
+        pfnGdipDeletePen(pen);
+    }
 }

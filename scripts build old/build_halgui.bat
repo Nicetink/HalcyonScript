@@ -6,7 +6,7 @@ set GCC=C:\msys64\mingw64\bin\gcc.exe
 set AR=C:\msys64\mingw64\bin\ar.exe
 set WINDRES=C:\msys64\mingw64\bin\windres.exe
 set CFLAGS=-Wall -O2 -I. -Isrc -Isrc/halgui
-set LDFLAGS=-lgdi32 -lcomdlg32 -lole32 -lshell32 -lcomctl32
+set LDFLAGS=-lgdi32 -lcomdlg32 -lole32 -lshell32 -lcomctl32 -lmsimg32 -ladvapi32
 
 echo ========================================
 echo Building HalcyonScript-Native with HalGUI
@@ -35,26 +35,32 @@ echo [2/3] Building HalcyonScript core...
 %GCC% %CFLAGS% -c src/project.c -o build/project.o
 %GCC% %CFLAGS% -c src/halgui_runtime.c -o build/halgui_runtime.o
 %GCC% %CFLAGS% -c src/halgui_gpu_stub.c -o build/halgui_gpu_stub.o
+%GCC% %CFLAGS% -c src/filesystem_api.c -o build/filesystem_api.o
+%GCC% %CFLAGS% -c src/registry_api.c -o build/registry_api.o
+%GCC% %CFLAGS% -c src/process_api.c -o build/process_api.o
+%GCC% %CFLAGS% -c src/compression_api.c -o build/compression_api.o
+%GCC% %CFLAGS% -c src/console_api.c -o build/console_api.o
+%GCC% %CFLAGS% -c src/builtin_api.c -o build/builtin_api.o
 if errorlevel 1 goto error
 
-echo [3/3] Compiling resources and linking halcyon.exe...
+echo [3/3] Compiling resources and linking HalcyonRT.exe...
 if exist resources\app.rc (
     %WINDRES% resources\app.rc -o build\app_res.o
     if errorlevel 1 (
         echo Warning: Resource compilation failed, building without icon
-        %GCC% %CFLAGS% build/*.o %LDFLAGS% -lwinmm -lgdiplus -o halcyon.exe
+        %GCC% %CFLAGS% build/*.o %LDFLAGS% -lwinmm -lgdiplus -o HalcyonRT.exe
     ) else (
-        %GCC% %CFLAGS% build/*.o build/app_res.o %LDFLAGS% -lwinmm -lgdiplus -o halcyon.exe
+        %GCC% %CFLAGS% build/*.o build/app_res.o %LDFLAGS% -lwinmm -lgdiplus -o HalcyonRT.exe
     )
 ) else (
-    %GCC% %CFLAGS% build/*.o %LDFLAGS% -lwinmm -lgdiplus -o halcyon.exe
+    %GCC% %CFLAGS% build/*.o %LDFLAGS% -lwinmm -lgdiplus -o HalcyonRT.exe
 )
 if errorlevel 1 goto error
 
 echo.
 echo ========================================
 echo Build successful!
-echo Output: halcyon.exe
+echo Output: HalcyonRT.exe
 echo ========================================
 goto end
 

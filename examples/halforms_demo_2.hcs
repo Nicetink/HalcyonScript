@@ -1,0 +1,385 @@
+# ============================================
+# HalForms Demo - Fixed Version
+# Демонстрация всех возможностей HalForms
+# ============================================
+
+HalForms.init()
+
+# ============================================
+# Создание главного окна
+# ============================================
+HalForms.createForm("mainForm", "HalForms Demo - All Features", 900, 650, 0)
+
+# ============================================
+# Создание меню
+# ============================================
+
+# Меню File
+HalForms.createMenu("fileMenu")
+HalForms.addMenuItem("fileMenu", "New", "menuNew")
+HalForms.addMenuItem("fileMenu", "Open...", "menuOpen")
+HalForms.addMenuItem("fileMenu", "Save", "menuSave")
+HalForms.addMenuItem("fileMenu", "-", "")
+HalForms.addMenuItem("fileMenu", "Exit", "menuExit")
+
+# Меню Edit
+HalForms.createMenu("editMenu")
+HalForms.addMenuItem("editMenu", "Cut", "menuCut")
+HalForms.addMenuItem("editMenu", "Copy", "menuCopy")
+HalForms.addMenuItem("editMenu", "Paste", "menuPaste")
+
+# Меню Help
+HalForms.createMenu("helpMenu")
+HalForms.addMenuItem("helpMenu", "About", "menuAbout")
+
+# Главное меню
+HalForms.createMenu("mainMenu")
+HalForms.addMenuItem("mainMenu", "File", "fileMenu")
+HalForms.addMenuItem("mainMenu", "Edit", "editMenu")
+HalForms.addMenuItem("mainMenu", "Help", "helpMenu")
+HalForms.setFormMenu("mainForm", "mainMenu")
+
+# ============================================
+# Статусбар
+# ============================================
+HalForms.createStatusBar("statusBar", 3)
+HalForms.setStatusBarText("statusBar", 0, "Ready")
+HalForms.setStatusBarText("statusBar", 1, "HalForms Demo")
+HalForms.setStatusBarText("statusBar", 2, "v1.0")
+
+# ============================================
+# Левая панель - Basic Controls
+# ============================================
+
+HalForms.createControl("label", "lblTitle", "Basic Controls", 10, 10, 200, 25)
+
+# Input fields
+HalForms.createControl("label", "lblName", "Name:", 10, 45, 80, 20)
+HalForms.createControl("textbox", "txtName", "John Doe", 100, 45, 180, 22)
+
+HalForms.createControl("label", "lblEmail", "Email:", 10, 75, 80, 20)
+HalForms.createControl("textbox", "txtEmail", "john@example.com", 100, 75, 180, 22)
+
+# Buttons
+HalForms.createControl("button", "btnSubmit", "Submit", 100, 105, 80, 30)
+HalForms.createControl("button", "btnClear", "Clear", 190, 105, 80, 30)
+
+# CheckBoxes
+HalForms.createControl("checkbox", "chkAgree", "I agree to terms", 10, 145, 200, 25)
+HalForms.createControl("checkbox", "chkNews", "Subscribe", 10, 175, 200, 25)
+
+# RadioButtons
+HalForms.createControl("groupbox", "grpGender", "Gender", 10, 210, 270, 90)
+HalForms.createControl("radiobutton", "rdMale", "Male", 20, 235, 80, 25)
+HalForms.createControl("radiobutton", "rdFemale", "Female", 20, 265, 80, 25)
+
+# ProgressBar
+HalForms.createControl("label", "lblProgress", "Progress:", 10, 310, 100, 20)
+HalForms.createControl("progressbar", "progress1", "", 10, 335, 270, 25)
+HalForms.setProperty("progress1", "value", 50)
+
+# Slider
+HalForms.createControl("label", "lblVolume", "Volume: 50%", 10, 370, 150, 20)
+HalForms.createControl("trackbar", "slider1", "", 10, 395, 270, 30)
+HalForms.setProperty("slider1", "value", 50)
+
+# ============================================
+# Центральная панель - Lists
+# ============================================
+
+HalForms.createControl("label", "lblLists", "Lists and ComboBox", 300, 10, 200, 25)
+
+# ComboBox
+HalForms.createControl("label", "lblCountry", "Country:", 300, 45, 100, 20)
+HalForms.createControl("combobox", "cmbCountry", "", 300, 70, 200, 25)
+HalForms.addItem("cmbCountry", "United States")
+HalForms.addItem("cmbCountry", "United Kingdom")
+HalForms.addItem("cmbCountry", "Canada")
+HalForms.addItem("cmbCountry", "Germany")
+HalForms.addItem("cmbCountry", "France")
+HalForms.addItem("cmbCountry", "Japan")
+
+# ListBox
+HalForms.createControl("label", "lblLang", "Languages:", 300, 110, 150, 20)
+HalForms.createControl("listbox", "lstLang", "", 300, 135, 200, 150)
+HalForms.addItem("lstLang", "HalcyonScript")
+HalForms.addItem("lstLang", "Python")
+HalForms.addItem("lstLang", "JavaScript")
+HalForms.addItem("lstLang", "C++")
+HalForms.addItem("lstLang", "Java")
+HalForms.addItem("lstLang", "C#")
+
+# List buttons
+HalForms.createControl("button", "btnAddLang", "Add", 300, 295, 60, 25)
+HalForms.createControl("button", "btnClearLang", "Clear", 370, 295, 60, 25)
+
+# ============================================
+# Правая панель - Dialogs
+# ============================================
+
+HalForms.createControl("label", "lblDialogs", "Dialogs", 520, 10, 200, 25)
+
+# Message Boxes
+HalForms.createControl("button", "btnInfo", "Info Message", 520, 45, 120, 30)
+HalForms.createControl("button", "btnWarning", "Warning", 650, 45, 120, 30)
+HalForms.createControl("button", "btnError", "Error", 520, 85, 120, 30)
+HalForms.createControl("button", "btnQuestion", "Question", 650, 85, 120, 30)
+HalForms.createControl("button", "btnYesNo", "Yes/No", 520, 125, 120, 30)
+
+# File Dialogs
+HalForms.createControl("button", "btnOpenFile", "Open File", 520, 175, 120, 30)
+HalForms.createControl("button", "btnSaveFile", "Save File", 650, 175, 120, 30)
+HalForms.createControl("button", "btnFolder", "Browse Folder", 520, 215, 120, 30)
+HalForms.createControl("button", "btnColor", "Color Picker", 650, 215, 120, 30)
+HalForms.createControl("button", "btnInput", "Input Dialog", 520, 255, 120, 30)
+
+# Result display
+HalForms.createControl("label", "lblResult", "Dialog Result:", 520, 295, 150, 20)
+HalForms.createControl("textbox", "txtResult", "", 520, 320, 350, 100)
+HalForms.setProperty("txtResult", "multiline", true)
+
+# ============================================
+# Нижняя панель - TreeView
+# ============================================
+
+HalForms.createControl("label", "lblTree", "Project Explorer (TreeView):", 10, 440, 250, 20)
+HalForms.createControl("treeview", "projectTree", "", 10, 465, 270, 130)
+
+# Добавление элементов в дерево
+HalForms.treeAddItem("projectTree", "", "My Project")
+HalForms.treeAddItem("projectTree", "My Project", "src")
+HalForms.treeAddItem("projectTree", "src", "main.hcs")
+HalForms.treeAddItem("projectTree", "src", "utils.hcs")
+HalForms.treeAddItem("projectTree", "My Project", "assets")
+HalForms.treeAddItem("projectTree", "assets", "images")
+HalForms.treeAddItem("projectTree", "assets", "sounds")
+
+# ============================================
+# Нижняя панель - Code Editor
+# ============================================
+
+HalForms.createControl("label", "lblCode", "Code Editor:", 300, 440, 200, 20)
+HalForms.createControl("codeeditor", "codeEditor", "", 300, 465, 570, 130)
+
+global sampleCode = "# HalcyonScript Sample\n"
+sampleCode = sampleCode + "func greet(name) {\n"
+sampleCode = sampleCode + "    print \"Hello, \" + name\n"
+sampleCode = sampleCode + "}\n"
+sampleCode = sampleCode + "greet(\"World\")"
+
+HalForms.setProperty("codeEditor", "text", sampleCode)
+
+# ============================================
+# Обработчики событий - Menu
+# ============================================
+
+func menuNew() {
+    HalForms.setProperty("codeEditor", "text", "")
+    HalForms.setStatusBarText("statusBar", 0, "New file created")
+}
+
+func menuOpen() {
+    global file = HalForms.openFile("Open File", "All Files (*.*)|*.*|HalcyonScript (*.hcs)|*.hcs")
+    if file != null and file != "" {
+        global content = File.read(file)
+        if content != null {
+            HalForms.setProperty("codeEditor", "text", content)
+            HalForms.setStatusBarText("statusBar", 0, "Opened: " + file)
+        }
+    }
+}
+
+func menuSave() {
+    global content = HalForms.getProperty("codeEditor", "text")
+    global file = HalForms.saveFile("Save File", "HalcyonScript (*.hcs)|*.hcs|All Files (*.*)|*.*", "untitled.hcs")
+    if file != null and file != "" {
+        global success = File.write(file, content)
+        if success {
+            HalForms.setStatusBarText("statusBar", 0, "Saved: " + file)
+        }
+    }
+}
+
+func menuExit() {
+    global result = HalForms.messageBox("Exit application?", "Exit", 4, 4)
+    if result == 6 {
+        HalForms.setProperty("mainForm", "visible", false)
+    }
+}
+
+func menuCut() {
+    global text = HalForms.getProperty("codeEditor", "text")
+    HalForms.clipboardSetText(text)
+    HalForms.setProperty("codeEditor", "text", "")
+    HalForms.setStatusBarText("statusBar", 0, "Cut to clipboard")
+}
+
+func menuCopy() {
+    global text = HalForms.getProperty("codeEditor", "text")
+    HalForms.clipboardSetText(text)
+    HalForms.setStatusBarText("statusBar", 0, "Copied to clipboard")
+}
+
+func menuPaste() {
+    global text = HalForms.clipboardGetText()
+    if text != null {
+        HalForms.setProperty("codeEditor", "text", text)
+        HalForms.setStatusBarText("statusBar", 0, "Pasted from clipboard")
+    }
+}
+
+func menuAbout() {
+    global msg = "HalForms Demo v1.0\n\n"
+    msg = msg + "Features:\n"
+    msg = msg + "- Menus and StatusBar\n"
+    msg = msg + "- Basic controls\n"
+    msg = msg + "- Lists and ComboBox\n"
+    msg = msg + "- TreeView\n"
+    msg = msg + "- Code Editor\n"
+    msg = msg + "- All dialog types\n"
+    msg = msg + "- Clipboard operations\n"
+    msg = msg + "- File I/O\n\n"
+    msg = msg + "Built with HalcyonScript"
+    
+    HalForms.messageBox(msg, "About", 0, 1)
+}
+
+# ============================================
+# Обработчики событий - Basic Controls
+# ============================================
+
+on btnSubmit clicked {
+    global name = HalForms.getProperty("txtName", "text")
+    global email = HalForms.getProperty("txtEmail", "text")
+    
+    global msg = "Submitted:\n"
+    msg = msg + "Name: " + name + "\n"
+    msg = msg + "Email: " + email
+    
+    HalForms.messageBox(msg, "Form Data", 0, 1)
+    HalForms.setStatusBarText("statusBar", 0, "Form submitted")
+}
+
+on btnClear clicked {
+    HalForms.setProperty("txtName", "text", "")
+    HalForms.setProperty("txtEmail", "text", "")
+    HalForms.setProperty("chkAgree", "checked", false)
+    HalForms.setProperty("chkNews", "checked", false)
+    HalForms.setStatusBarText("statusBar", 0, "Form cleared")
+}
+
+on slider1 changed {
+    global value = HalForms.getProperty("slider1", "value")
+    HalForms.setProperty("lblVolume", "text", "Volume: " + str(value) + "%")
+    HalForms.setProperty("progress1", "value", value)
+}
+
+# ============================================
+# Обработчики событий - Lists
+# ============================================
+
+on btnAddLang clicked {
+    global userInput = HalForms.inputDialog("Add Language", "Enter language:", "")
+    if userInput != null and userInput != "" {
+        HalForms.addItem("lstLang", userInput)
+        HalForms.setStatusBarText("statusBar", 0, "Added: " + userInput)
+    }
+}
+
+on btnClearLang clicked {
+    HalForms.clearItems("lstLang")
+    HalForms.setStatusBarText("statusBar", 0, "List cleared")
+}
+
+# ============================================
+# Обработчики событий - Dialogs
+# ============================================
+
+on btnInfo clicked {
+    HalForms.messageBox("This is an information message", "Information", 0, 1)
+    HalForms.setProperty("txtResult", "text", "Info message shown")
+}
+
+on btnWarning clicked {
+    HalForms.messageBox("This is a warning message", "Warning", 0, 2)
+    HalForms.setProperty("txtResult", "text", "Warning message shown")
+}
+
+on btnError clicked {
+    HalForms.messageBox("This is an error message", "Error", 0, 3)
+    HalForms.setProperty("txtResult", "text", "Error message shown")
+}
+
+on btnQuestion clicked {
+    HalForms.messageBox("This is a question?", "Question", 0, 4)
+    HalForms.setProperty("txtResult", "text", "Question message shown")
+}
+
+on btnYesNo clicked {
+    global result = HalForms.messageBox("Do you agree?", "Yes/No", 4, 4)
+    if result == 6 {
+        HalForms.setProperty("txtResult", "text", "User clicked: Yes")
+    } else {
+        HalForms.setProperty("txtResult", "text", "User clicked: No")
+    }
+}
+
+on btnOpenFile clicked {
+    global file = HalForms.openFile("Open File", "All Files (*.*)|*.*|Text Files (*.txt)|*.txt")
+    if file != null and file != "" {
+        HalForms.setProperty("txtResult", "text", "Selected:\n" + file)
+    } else {
+        HalForms.setProperty("txtResult", "text", "No file selected")
+    }
+}
+
+on btnSaveFile clicked {
+    global file = HalForms.saveFile("Save File", "Text Files (*.txt)|*.txt|All Files (*.*)|*.*", "document.txt")
+    if file != null and file != "" {
+        HalForms.setProperty("txtResult", "text", "Save to:\n" + file)
+    } else {
+        HalForms.setProperty("txtResult", "text", "Save cancelled")
+    }
+}
+
+on btnFolder clicked {
+    global folder = HalForms.browseFolder("Select Folder")
+    if folder != null and folder != "" {
+        HalForms.setProperty("txtResult", "text", "Selected:\n" + folder)
+    } else {
+        HalForms.setProperty("txtResult", "text", "No folder selected")
+    }
+}
+
+on btnColor clicked {
+    global color = HalForms.colorDialog(16744192)
+    HalForms.setProperty("txtResult", "text", "Color: " + str(color))
+}
+
+on btnInput clicked {
+    global userInput = HalForms.inputDialog("Input", "Enter your name:", "John Doe")
+    if userInput != null and userInput != "" {
+        HalForms.setProperty("txtResult", "text", "You entered:\n" + userInput)
+    } else {
+        HalForms.setProperty("txtResult", "text", "Input cancelled")
+    }
+}
+
+# ============================================
+# Запуск приложения
+# ============================================
+
+print "HalForms Demo started"
+print "All features working:"
+print "- Menus with submenus"
+print "- StatusBar"
+print "- Basic controls"
+print "- Lists and ComboBox"
+print "- TreeView"
+print "- Code Editor"
+print "- All dialogs"
+print "- Clipboard"
+print "- File I/O"
+
+HalForms.setStatusBarText("statusBar", 0, "Ready - All features available!")
+HalForms.run()

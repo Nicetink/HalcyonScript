@@ -4,7 +4,7 @@
  * This is a small launcher that:
  * 1. Checks if HalcyonScript is installed in the system
  * 2. Extracts embedded scripts to temp folder
- * 3. Runs halcyon.exe with the extracted project
+ * 3. Runs HalcyonRT.exe with the extracted project
  */
 
 #include <windows.h>
@@ -17,20 +17,20 @@
 #define IDR_APP_CONFIG  100
 #define IDR_SCRIPTS     101
 
-/* Find halcyon.exe in system */
+/* Find HalcyonRT.exe in system */
 static char* find_halcyon(void) {
     static char path[MAX_PATH];
     
     /* Try PATH first */
-    if (SearchPathA(NULL, "halcyon.exe", NULL, MAX_PATH, path, NULL)) {
+    if (SearchPathA(NULL, "HalcyonRT.exe", NULL, MAX_PATH, path, NULL)) {
         return path;
     }
     
     /* Try common installation locations */
     const char* locations[] = {
-        "C:\\Program Files\\HalcyonScript\\halcyon.exe",
-        "C:\\Program Files (x86)\\HalcyonScript\\halcyon.exe",
-        "C:\\HalcyonScript\\halcyon.exe",
+        "C:\\Program Files\\HalcyonScript\\HalcyonRT.exe",
+        "C:\\Program Files (x86)\\HalcyonScript\\HalcyonRT.exe",
+        "C:\\HalcyonScript\\HalcyonRT.exe",
         NULL
     };
     
@@ -45,7 +45,7 @@ static char* find_halcyon(void) {
     GetModuleFileNameA(NULL, path, MAX_PATH);
     char* last_sep = strrchr(path, '\\');
     if (last_sep) {
-        strcpy(last_sep + 1, "halcyon.exe");
+        strcpy(last_sep + 1, "HalcyonRT.exe");
         if (GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) {
             return path;
         }
@@ -190,14 +190,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     (void)lpCmdLine;
     (void)nCmdShow;
     
-    /* Find halcyon.exe */
+    /* Find HalcyonRT.exe */
     char* halcyon_path = find_halcyon();
     if (!halcyon_path) {
         MessageBoxA(NULL, 
             "HalcyonScript is not installed on this system.\n\n"
             "Please install HalcyonScript from:\n"
             "https://github.com/KAInaps/HalcyonScript\n\n"
-            "Or add halcyon.exe to your system PATH.",
+            "Or add HalcyonRT.exe to your system PATH.",
             "HalcyonScript Required",
             MB_OK | MB_ICONERROR);
         return 1;
@@ -235,7 +235,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     snprintf(config_path, MAX_PATH, "%s\\app.halproj", temp_dir);
     snprintf(cmd_line, sizeof(cmd_line), "\"%s\" \"%s\"", halcyon_path, config_path);
     
-    /* Start halcyon.exe */
+    /* Start HalcyonRT.exe */
     STARTUPINFOA si = {0};
     PROCESS_INFORMATION pi = {0};
     si.cb = sizeof(si);

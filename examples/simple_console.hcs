@@ -1,0 +1,36 @@
+// Простая консольная программа без GUI
+print "=== HalcyonScript Simple Console ==="
+print "Hello, World!"
+
+// Математика
+var a = 10
+var b = 20
+var sum = a + b
+print "10 + 20 =", sum
+
+// Строки
+var name = "HalcyonScript"
+var version = "0.18"
+print name, "version", version
+
+// Цикл
+print "\nCounting to 5:"
+for i from 1 to 5 {
+    print i
+}
+
+// Функция
+func factorial(n) {
+    if n <= 1 {
+        return 1
+    }
+    return n * factorial(n - 1)
+}
+
+print "\nFactorial of 5:", factorial(5)
+
+// Массив (если поддерживается)
+var numbers = [1, 2, 3, 4, 5]
+print "Array:", numbers
+
+print "\nProgram finished!"

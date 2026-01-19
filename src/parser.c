@@ -1,5 +1,7 @@
 /*
- * HalcyonScript - Parser implementation
+ * HalcyonScript © KAInaps 2026 
+   Simple programming for creative minds 
+   github.com/Nicetink/HalcyonScript
  */
 
 #include "parser.h"
@@ -248,8 +250,7 @@ static void parse_props(HcsParser* p, HcsPropertyList* props) {
         char* name = expect_id(p, "prop");
         expect(p, HCS_TOK_COLON, ":");
         prop_list_add(props, name, parse_expression(p));
-        free(name);
-        match(p, HCS_TOK_COMMA);
+        free(name); match(p, HCS_TOK_COMMA);
     }
     expect(p, HCS_TOK_RBRACE, "}");
 }
@@ -277,12 +278,9 @@ static HcsAstNode* parse_create_control(HcsParser* p, const char* type) {
     n->data.create_control.text = NULL;
     prop_list_init(&n->data.create_control.properties);
     if (match(p, HCS_TOK_STRING)) n->data.create_control.text = strdup(PREV()->value);
-    if (match(p, HCS_TOK_LBRACE)) {
-        parse_props(p, &n->data.create_control.properties);
-    } else {
-        /* Support both x=10 and x:10 syntax for properties */
-        while (CHECK(HCS_TOK_IDENTIFIER) && PEEK(1) && 
-               (PEEK(1)->type == HCS_TOK_ASSIGN || PEEK(1)->type == HCS_TOK_COLON)) {
+    if (match(p, HCS_TOK_LBRACE)) parse_props(p, &n->data.create_control.properties);
+    else {
+        while (CHECK(HCS_TOK_IDENTIFIER) && PEEK(1) && (PEEK(1)->type == HCS_TOK_ASSIGN || PEEK(1)->type == HCS_TOK_COLON)) {
             char* pn = strdup(CURRENT()->value); ADVANCE(); ADVANCE();
             prop_list_add(&n->data.create_control.properties, pn, parse_expression(p));
             free(pn);
@@ -320,6 +318,7 @@ static HcsAstNode* parse_create(HcsParser* p) {
         case HCS_TOK_SLIDER: return parse_create_control(p, "slider");
         case HCS_TOK_PROGRESS: return parse_create_control(p, "progress");
         case HCS_TOK_PANEL: return parse_create_control(p, "panel");
+        case HCS_TOK_CALENDAR: return parse_create_control(p, "calendar");
         default: return parse_create_control(p, "unknown");
     }
 }
@@ -457,14 +456,9 @@ static HcsAstNode* parse_set(HcsParser* p) {
     HcsAstNode* n = ast_create(HCS_AST_SET_PROPERTY, line);
     n->data.set_prop.element_name = expect_id(p, "element");
     expect(p, HCS_TOK_DOT, ".");
-    /* Property name can be a keyword or identifier like 'text', 'value', 'visible', etc. */
-    if (CURRENT() && CURRENT()->value) {
-        n->data.set_prop.property = strdup(CURRENT()->value);
-        ADVANCE();
-    } else {
-        fprintf(stderr, "Error line %d: Expected property name\n", line);
-        n->data.set_prop.property = strdup("_err_");
-    }
+    n->data.set_prop.property = (CURRENT() && CURRENT()->value) ? strdup(CURRENT()->value) : strdup("_err_");
+    if (!CURRENT() || !CURRENT()->value) fprintf(stderr, "Error line %d: Expected property name\n", line);
+    else ADVANCE();
     expect(p, HCS_TOK_ASSIGN, "=");
     n->data.set_prop.value = parse_expression(p);
     return n;
@@ -476,14 +470,9 @@ static HcsAstNode* parse_get(HcsParser* p) {
     HcsAstNode* n = ast_create(HCS_AST_GET_PROPERTY, line);
     n->data.get_prop.element_name = expect_id(p, "element");
     expect(p, HCS_TOK_DOT, ".");
-    /* Property name can be a keyword or identifier like 'text', 'value', 'checked', etc. */
-    if (CURRENT() && CURRENT()->value) {
-        n->data.get_prop.property = strdup(CURRENT()->value);
-        ADVANCE();
-    } else {
-        fprintf(stderr, "Error line %d: Expected property name\n", line);
-        n->data.get_prop.property = strdup("_err_");
-    }
+    n->data.get_prop.property = (CURRENT() && CURRENT()->value) ? strdup(CURRENT()->value) : strdup("_err_");
+    if (!CURRENT() || !CURRENT()->value) fprintf(stderr, "Error line %d: Expected property name\n", line);
+    else ADVANCE();
     expect(p, HCS_TOK_ARROW, "->");
     n->data.get_prop.result_var = expect_id(p, "result var");
     return n;
@@ -550,26 +539,14 @@ static HcsAstNode* parse_id_stmt(HcsParser* p) {
         expect(p, HCS_TOK_RPAREN, ")");
         return n;
     }
-    /* Handle method calls like HalGUI.init(), HalGUI.setTheme("dark"), HalGUI.run(), etc. */
     if (match(p, HCS_TOK_DOT)) {
-        /* Method name can be a keyword like 'run', 'init', 'open', 'create', etc. */
-        char* method = NULL;
-        
-        // Accept ANY token with a value as method name (including keywords)
-        if (CURRENT() && CURRENT()->value) {
-            method = strdup(CURRENT()->value);
-            ADVANCE();
-        } else {
-            fprintf(stderr, "Error line %d: Expected method name\n", line);
-            method = strdup("_err_");
-        }
+        char* method = (CURRENT() && CURRENT()->value) ? strdup(CURRENT()->value) : strdup("_err_");
+        if (!CURRENT() || !CURRENT()->value) fprintf(stderr, "Error line %d: Expected method name\n", line);
+        else ADVANCE();
         if (match(p, HCS_TOK_LPAREN)) {
-            /* Build full function name: "HalGUI.init" */
             char* full_name = malloc(strlen(name) + strlen(method) + 2);
             sprintf(full_name, "%s.%s", name, method);
-            free(name);
-            free(method);
-            
+            free(name); free(method);
             HcsAstNode* n = ast_create(HCS_AST_FUNC_CALL, line);
             n->data.func_call.name = full_name;
             ast_list_init(&n->data.func_call.args);
@@ -604,16 +581,8 @@ static HcsAstNode* parse_stop(HcsParser* p) {
     return n;
 }
 
-/*
- * Parse import statement
- * Syntax:
- *   import "file.hcs"
- *   import "file.hcs" as alias
- *   import { func1, func2 } from "file.hcs"
- *   import * from "file.hcs"
- */
 static HcsAstNode* parse_import(HcsParser* p) {
-    ADVANCE(); /* consume 'import' */
+    ADVANCE();
     int line = PREV()->line;
     
     HcsAstNode* n = ast_create(HCS_AST_IMPORT, line);
@@ -622,10 +591,7 @@ static HcsAstNode* parse_import(HcsParser* p) {
     n->data.import_stmt.symbols = NULL;
     n->data.import_stmt.symbol_count = 0;
     n->data.import_stmt.import_all = false;
-    
-    /* Check for { symbols } or * */
     if (CHECK(HCS_TOK_LBRACE)) {
-        /* import { a, b, c } from "file" */
         ADVANCE();
         char* symbols[64];
         int count = 0;

@@ -1,0 +1,88 @@
+# ========================================
+# CALENDAR APPLICATION
+# Full-featured date picker with HalGUI
+# ========================================
+
+HalGUI.init()
+HalGUI.setTheme("dark")
+
+# Create main window
+create window app "Calendar - Date Picker" 520 550
+
+# ========================================
+# UI LAYOUT
+# ========================================
+
+# Title
+create label title "📅 Select a Date" x:20 y:20 width:480 height:40
+
+# Instructions
+create label instructions "Click on a day to select it. Use < > to navigate months." x:20 y:70 width:480 height:25
+
+# Calendar panel (actual calendar widget)
+create calendar calendarPanel x:20 y:105 width:480 height:280
+
+# ========================================
+# SELECTED DATE DISPLAY
+# ========================================
+
+create label selectedLabel "Selected Date:" x:20 y:400 width:150 height:30
+create label selectedDate "None" x:180 y:400 width:320 height:30
+
+# ========================================
+# ACTION BUTTONS
+# ========================================
+
+create button todayButton "Today" x:20 y:450 width:100 height:40
+create button clearButton "Clear" x:130 y:450 width:100 height:40
+create button okButton "OK" x:350 y:450 width:150 height:40
+
+# ========================================
+# STATUS BAR
+# ========================================
+
+create label statusBar "Ready" x:20 y:510 width:480 height:25
+
+# ========================================
+# EVENT HANDLERS
+# ========================================
+
+when todayButton clicked {
+    print "Today button clicked"
+    HalGUI.showNotification("Calendar", "Jumped to today's date", "info", 2000)
+}
+
+when clearButton clicked {
+    print "Clear button clicked"
+    HalGUI.showNotification("Calendar", "Selection cleared", "info", 2000)
+}
+
+when okButton clicked {
+    print "OK button clicked"
+    HalGUI.showNotification("Calendar", "Date confirmed!", "success", 2000)
+}
+
+# ========================================
+# STARTUP
+# ========================================
+
+print "========================================="
+print "CALENDAR APPLICATION STARTED"
+print "========================================="
+print ""
+print "Features:"
+print "  ✓ Interactive calendar widget"
+print "  ✓ Month navigation (< > buttons)"
+print "  ✓ Day selection"
+print "  ✓ Today highlighting"
+print "  ✓ Selected date display"
+print ""
+print "Instructions:"
+print "  1. Click on any day to select it"
+print "  2. Use < > buttons to change months"
+print "  3. Click 'Today' to jump to current date"
+print "  4. Click 'OK' to confirm selection"
+print ""
+print "========================================="
+
+HalGUI.run()

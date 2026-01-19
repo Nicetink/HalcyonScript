@@ -26,7 +26,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo Compiling...
 
-gcc -Wall -O2 -I./include -I./src/halgui ^
+gcc -Wall -O2 -I./include -I./src/halgui -I./src/halforms ^
     src/main.c ^
     src/token.c ^
     src/lexer.c ^
@@ -40,9 +40,9 @@ gcc -Wall -O2 -I./include -I./src/halgui ^
     src/gui.c ^
     %RES_OBJ% ^
     -o dist/halcyon.exe ^
-    -L./src/halgui -lhalgui ^
+    -L./src/halgui -L./src/halforms -lhalgui -lhalforms ^
     -mwindows ^
-    -lcomctl32 -lgdi32 -lshell32 -ld3d11 -ldxgi -lgdiplus
+    -lcomctl32 -lgdi32 -lshell32 -ld3d11 -ldxgi -lgdiplus -lcomdlg32 -lole32 -lshlwapi
 
 if %ERRORLEVEL% equ 0 (
     echo.

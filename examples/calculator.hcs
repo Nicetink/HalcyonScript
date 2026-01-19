@@ -1,0 +1,22 @@
+// Простой калькулятор
+print "=== Simple Calculator ==="
+print ""
+
+var a_str = input("Enter first number: ")
+var a = float(a_str)
+var b_str = input("Enter second number: ")
+var b = float(b_str)
+
+print ""
+print "Results:"
+print "  Addition:", a + b
+print "  Subtraction:", a - b
+print "  Multiplication:", a * b
+if b != 0 {
+    print "  Division:", a / b
+} else {
+    print "  Division: Cannot divide by zero"
+}
+print "  Power:", pow(a, b)
+print "  Min:", min(a, b)
+print "  Max:", max(a, b)

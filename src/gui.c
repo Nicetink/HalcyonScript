@@ -1,14 +1,16 @@
 /*
- * HalcyonScript - Win32 GUI + HalGUI Support
+ * HalcyonScript - Win32 GUI + HalGUI + HalForms Support
  */
 
 #include "runtime.h"
 #include <commctrl.h>
 #include <stdlib.h>
+#include <conio.h>
 
 static HcsRuntime* g_runtime = NULL;
 static int g_ctrl_id = 1000;
 static bool g_use_halgui_mode = false;
+static bool g_use_halforms_mode = false;
 
 // Check if HalGUI mode is active
 bool gui_is_halgui_mode(void) {
@@ -25,6 +27,12 @@ extern void halgui_get_property(HcsRuntime* rt, HcsAstNode* node);
 extern void halgui_register_handler(HcsAstNode* node);
 extern void halgui_run(void);
 extern void halgui_set_theme(const char* theme_name);
+
+// HalForms runtime functions
+extern void halforms_runtime_init(HcsRuntime* rt);
+extern void halforms_runtime_shutdown(void);
+extern void halforms_rt_register_handler(HcsAstNode* node);
+extern void halforms_rt_run(void);
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -194,23 +202,67 @@ void gui_run(HcsRuntime* rt) {
 void gui_execute_program(HcsRuntime* rt, HcsAstNode* program) {
     if (!program || program->type != HCS_AST_PROGRAM) return;
     
-    // Check if program uses HalGUI (look for HalGUI.init() call or @halgui directive)
+    // Check if program uses HalGUI or HalForms (look for init() calls)
+    bool has_gui = false;
     for (int i = 0; i < program->data.program.statements.count; i++) {
         HcsAstNode* s = program->data.program.statements.items[i];
         if (s->type == HCS_AST_FUNC_CALL && s->data.func_call.name) {
             if (strcmp(s->data.func_call.name, "HalGUI.init") == 0) {
                 g_use_halgui_mode = true;
+                has_gui = true;
+                break;
+            }
+            if (strcmp(s->data.func_call.name, "HalForms.init") == 0) {
+                g_use_halforms_mode = true;
+                has_gui = true;
                 break;
             }
         }
+        // Check for GUI elements
+        if (s->type == HCS_AST_CREATE_WINDOW || s->type == HCS_AST_CREATE_CONTROL) {
+            has_gui = true;
+        }
     }
     
-    if (g_use_halgui_mode) {
+    // If no GUI detected, just execute as console program
+    if (!has_gui) {
+        for (int i = 0; i < program->data.program.statements.count; i++) {
+            execute_statement(rt, program->data.program.statements.items[i]);
+            if (!rt->running) break;
+        }
+        
+        // Add pause at the end for console programs (so window doesn't close immediately)
+        printf("\n");
+        printf("Press any key to continue...");
+        fflush(stdout);
+        _getch();
+        
+        return;
+    }
+    
+    // Forward declaration
+    extern void execute_statement(HcsRuntime* rt, HcsAstNode* node);
+    
+    if (g_use_halforms_mode) {
+        // Use HalForms mode - execute all statements through runtime
+        // HalForms.* functions are handled in call_builtin
+        for (int i = 0; i < program->data.program.statements.count; i++) {
+            HcsAstNode* s = program->data.program.statements.items[i];
+            
+            if (s->type == HCS_AST_EVENT_HANDLER) {
+                halforms_rt_register_handler(s);
+            } else {
+                execute_statement(rt, s);
+            }
+            if (!rt->running) break;
+        }
+        
+        halforms_runtime_shutdown();
+        exit(0);
+    }
+    else if (g_use_halgui_mode) {
         // Use HalGUI mode
         halgui_runtime_init(rt);
-        
-        // Forward declaration
-        extern void execute_statement(HcsRuntime* rt, HcsAstNode* node);
         
         for (int i = 0; i < program->data.program.statements.count; i++) {
             HcsAstNode* s = program->data.program.statements.items[i];
