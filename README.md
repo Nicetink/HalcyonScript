@@ -68,7 +68,7 @@ HalForms.run()
 
 ### Build from Source
 ```batch
-cd HalcyonScript-Native
+cd HalcyonScript
 build_all.bat
 ```
 
@@ -76,12 +76,12 @@ This builds HalcyonScript with both HalGUI and HalForms support.
 
 ### Run a Script
 ```batch
-HalcyonRT.exe script.hcs
+Halcyon script.hcs
 ```
 
 ### Build a Project
 ```batch
-HalcyonRT.exe build project.halproj
+Halcyon build project.halproj
 ```
 
 ## Language Syntax
