@@ -3,6 +3,9 @@ REM HalcyonScript-Native Full Build Script
 REM Builds HalcyonScript with HalGUI and HalForms support
 REM Usage: build_all.bat
 
+REM Change to the script's directory
+cd /d "%~dp0"
+
 set GCC=C:\msys64\mingw64\bin\gcc.exe
 set AR=C:\msys64\mingw64\bin\ar.exe
 set WINDRES=C:\msys64\mingw64\bin\windres.exe
@@ -41,6 +44,8 @@ echo [2/5] Building HalForms library...
 %GCC% %CFLAGS% -c src/halforms/halforms_extended.c -o build/halforms_extended.o
 %GCC% %CFLAGS% -c src/halforms/halforms_graphics.c -o build/halforms_graphics.o
 %GCC% %CFLAGS% -c src/halforms/halforms_data.c -o build/halforms_data.o
+%GCC% %CFLAGS% -c src/halforms/halforms_paint.c -o build/halforms_paint.o
+%GCC% %CFLAGS% -c src/halforms/halforms_paint_runtime.c -o build/halforms_paint_runtime.o
 if errorlevel 1 goto error
 
 echo [3/5] Building HalcyonScript core...
@@ -123,6 +128,8 @@ echo [5/5] Linking HalcyonRT.exe...
     build/halforms_extended.o ^
     build/halforms_graphics.o ^
     build/halforms_data.o ^
+    build/halforms_paint.o ^
+    build/halforms_paint_runtime.o ^
     %RES_OBJ% ^
     %MANIFEST_OBJ% ^
     %LDFLAGS% -lwinmm -lgdiplus -luxtheme -lmsimg32 ^

@@ -3,6 +3,7 @@
  */
 
 #include "runtime.h"
+#include "halgui_runtime.h"
 #include <stdio.h>
 #include <math.h>
 #include <windows.h>
@@ -88,6 +89,22 @@ extern void halforms_rt_register_handler(HcsAstNode* node);
 extern void halforms_rt_run(void);
 extern void halforms_rt_add_item(const char* element, const char* item);
 extern void halforms_rt_clear_items(const char* element);
+
+// Forward declarations for Paint Canvas API
+extern HcsValue* hcs_paintcanvas_create(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_set_tool(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_set_color(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_set_brush_size(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_set_brush_type(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_clear(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_undo(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_redo(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_save(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_load(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_invert(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_grayscale(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_brightness(HcsRuntime* rt, HcsValue** args, int argc);
+extern HcsValue* hcs_paintcanvas_blur(HcsRuntime* rt, HcsValue** args, int argc);
 extern HcsValue* halforms_rt_msgbox(const char* text, const char* title, int buttons, int icon);
 extern HcsValue* halforms_rt_open_file(const char* title, const char* filter);
 extern HcsValue* halforms_rt_save_file(const char* title, const char* filter, const char* defaultName);
@@ -739,6 +756,85 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
             value_release(title_v); value_release(msg_v);
             return value_null();
         }
+        
+        // HalGUI.setLayout(panelName, layoutType)
+        if (strcmp(func, "setLayout") == 0 && args->count >= 2) {
+            HcsValue* panel_v = eval_expression(rt, args->items[0]);
+            HcsValue* layout_v = eval_expression(rt, args->items[1]);
+            char* panel = value_to_string(panel_v);
+            char* layout = value_to_string(layout_v);
+            halgui_set_layout(panel, layout);
+            free(panel); free(layout);
+            value_release(panel_v); value_release(layout_v);
+            return value_null();
+        }
+        
+        // HalGUI.setGap(panelName, gap)
+        if (strcmp(func, "setGap") == 0 && args->count >= 2) {
+            HcsValue* panel_v = eval_expression(rt, args->items[0]);
+            HcsValue* gap_v = eval_expression(rt, args->items[1]);
+            char* panel = value_to_string(panel_v);
+            int gap = (int)value_to_number(gap_v);
+            halgui_set_gap(panel, gap);
+            free(panel);
+            value_release(panel_v); value_release(gap_v);
+            return value_null();
+        }
+        
+        // HalGUI.setAlign(widgetName, horizontal, vertical)
+        if (strcmp(func, "setAlign") == 0 && args->count >= 3) {
+            HcsValue* widget_v = eval_expression(rt, args->items[0]);
+            HcsValue* h_v = eval_expression(rt, args->items[1]);
+            HcsValue* v_v = eval_expression(rt, args->items[2]);
+            char* widget = value_to_string(widget_v);
+            char* h_align = value_to_string(h_v);
+            char* v_align = value_to_string(v_v);
+            halgui_set_align(widget, h_align, v_align);
+            free(widget); free(h_align); free(v_align);
+            value_release(widget_v); value_release(h_v); value_release(v_v);
+            return value_null();
+        }
+        
+        // HalGUI.setFlex(widgetName, flex)
+        if (strcmp(func, "setFlex") == 0 && args->count >= 2) {
+            HcsValue* widget_v = eval_expression(rt, args->items[0]);
+            HcsValue* flex_v = eval_expression(rt, args->items[1]);
+            char* widget = value_to_string(widget_v);
+            float flex = (float)value_to_number(flex_v);
+            halgui_set_widget_flex(widget, flex);
+            free(widget);
+            value_release(widget_v); value_release(flex_v);
+            return value_null();
+        }
+        
+        // HalGUI.setMargin(widgetName, top, right, bottom, left)
+        if (strcmp(func, "setMargin") == 0 && args->count >= 5) {
+            HcsValue* widget_v = eval_expression(rt, args->items[0]);
+            HcsValue* top_v = eval_expression(rt, args->items[1]);
+            HcsValue* right_v = eval_expression(rt, args->items[2]);
+            HcsValue* bottom_v = eval_expression(rt, args->items[3]);
+            HcsValue* left_v = eval_expression(rt, args->items[4]);
+            char* widget = value_to_string(widget_v);
+            int top = (int)value_to_number(top_v);
+            int right = (int)value_to_number(right_v);
+            int bottom = (int)value_to_number(bottom_v);
+            int left = (int)value_to_number(left_v);
+            halgui_set_widget_margin(widget, top, right, bottom, left);
+            free(widget);
+            value_release(widget_v); value_release(top_v); value_release(right_v);
+            value_release(bottom_v); value_release(left_v);
+            return value_null();
+        }
+        
+        // HalGUI.applyLayout(panelName)
+        if (strcmp(func, "applyLayout") == 0 && args->count >= 1) {
+            HcsValue* panel_v = eval_expression(rt, args->items[0]);
+            char* panel = value_to_string(panel_v);
+            halgui_apply_layout(panel);
+            free(panel);
+            value_release(panel_v);
+            return value_null();
+        }
     }
     
     // HalForms.* functions (Windows Forms-like API)
@@ -1025,6 +1121,210 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
                 return result;
             }
             return value_null();
+        }
+        
+        // HalForms.createPaintCanvas(name, x, y, w, h)
+        if (strcmp(func, "createPaintCanvas") == 0 && args->count >= 5) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* x_v = eval_expression(rt, args->items[1]);
+            HcsValue* y_v = eval_expression(rt, args->items[2]);
+            HcsValue* w_v = eval_expression(rt, args->items[3]);
+            HcsValue* h_v = eval_expression(rt, args->items[4]);
+            
+            HcsValue* hcs_args[6];
+            hcs_args[0] = value_string("main"); // parent form
+            hcs_args[1] = name_v;
+            hcs_args[2] = x_v;
+            hcs_args[3] = y_v;
+            hcs_args[4] = w_v;
+            hcs_args[5] = h_v;
+            
+            HcsValue* result = hcs_paintcanvas_create(rt, hcs_args, 6);
+            value_release(name_v); value_release(x_v); value_release(y_v);
+            value_release(w_v); value_release(h_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasSetTool(name, tool)
+        if (strcmp(func, "paintCanvasSetTool") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* tool_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = tool_v;
+            
+            HcsValue* result = hcs_paintcanvas_set_tool(rt, hcs_args, 2);
+            value_release(name_v); value_release(tool_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasSetColor(name, r, g, b)
+        if (strcmp(func, "paintCanvasSetColor") == 0 && args->count >= 4) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* r_v = eval_expression(rt, args->items[1]);
+            HcsValue* g_v = eval_expression(rt, args->items[2]);
+            HcsValue* b_v = eval_expression(rt, args->items[3]);
+            
+            HcsValue* hcs_args[4];
+            hcs_args[0] = name_v;
+            hcs_args[1] = r_v;
+            hcs_args[2] = g_v;
+            hcs_args[3] = b_v;
+            
+            HcsValue* result = hcs_paintcanvas_set_color(rt, hcs_args, 4);
+            value_release(name_v); value_release(r_v); value_release(g_v); value_release(b_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasSetBrushSize(name, size)
+        if (strcmp(func, "paintCanvasSetBrushSize") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* size_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = size_v;
+            
+            HcsValue* result = hcs_paintcanvas_set_brush_size(rt, hcs_args, 2);
+            value_release(name_v); value_release(size_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasSetBrushType(name, type)
+        if (strcmp(func, "paintCanvasSetBrushType") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* type_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = type_v;
+            
+            HcsValue* result = hcs_paintcanvas_set_brush_type(rt, hcs_args, 2);
+            value_release(name_v); value_release(type_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasClear(name, r, g, b)
+        if (strcmp(func, "paintCanvasClear") == 0 && args->count >= 4) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* r_v = eval_expression(rt, args->items[1]);
+            HcsValue* g_v = eval_expression(rt, args->items[2]);
+            HcsValue* b_v = eval_expression(rt, args->items[3]);
+            
+            HcsValue* hcs_args[4];
+            hcs_args[0] = name_v;
+            hcs_args[1] = r_v;
+            hcs_args[2] = g_v;
+            hcs_args[3] = b_v;
+            
+            HcsValue* result = hcs_paintcanvas_clear(rt, hcs_args, 4);
+            value_release(name_v); value_release(r_v); value_release(g_v); value_release(b_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasUndo(name)
+        if (strcmp(func, "paintCanvasUndo") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            
+            HcsValue* hcs_args[1];
+            hcs_args[0] = name_v;
+            
+            HcsValue* result = hcs_paintcanvas_undo(rt, hcs_args, 1);
+            value_release(name_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasRedo(name)
+        if (strcmp(func, "paintCanvasRedo") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            
+            HcsValue* hcs_args[1];
+            hcs_args[0] = name_v;
+            
+            HcsValue* result = hcs_paintcanvas_redo(rt, hcs_args, 1);
+            value_release(name_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasSave(name, filename)
+        if (strcmp(func, "paintCanvasSave") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* file_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = file_v;
+            
+            HcsValue* result = hcs_paintcanvas_save(rt, hcs_args, 2);
+            value_release(name_v); value_release(file_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasLoad(name, filename)
+        if (strcmp(func, "paintCanvasLoad") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* file_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = file_v;
+            
+            HcsValue* result = hcs_paintcanvas_load(rt, hcs_args, 2);
+            value_release(name_v); value_release(file_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasGrayscale(name)
+        if (strcmp(func, "paintCanvasGrayscale") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            
+            HcsValue* hcs_args[1];
+            hcs_args[0] = name_v;
+            
+            HcsValue* result = hcs_paintcanvas_grayscale(rt, hcs_args, 1);
+            value_release(name_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasInvert(name)
+        if (strcmp(func, "paintCanvasInvert") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            
+            HcsValue* hcs_args[1];
+            hcs_args[0] = name_v;
+            
+            HcsValue* result = hcs_paintcanvas_invert(rt, hcs_args, 1);
+            value_release(name_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasBrightness(name, amount)
+        if (strcmp(func, "paintCanvasBrightness") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* amt_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = amt_v;
+            
+            HcsValue* result = hcs_paintcanvas_brightness(rt, hcs_args, 2);
+            value_release(name_v); value_release(amt_v);
+            return result;
+        }
+        
+        // HalForms.paintCanvasBlur(name, radius)
+        if (strcmp(func, "paintCanvasBlur") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* rad_v = eval_expression(rt, args->items[1]);
+            
+            HcsValue* hcs_args[2];
+            hcs_args[0] = name_v;
+            hcs_args[1] = rad_v;
+            
+            HcsValue* result = hcs_paintcanvas_blur(rt, hcs_args, 2);
+            value_release(name_v); value_release(rad_v);
+            return result;
         }
     }
     

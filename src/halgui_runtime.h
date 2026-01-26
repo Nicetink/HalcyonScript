@@ -43,4 +43,12 @@ HcsValue* halgui_dialog_save_file(HcsRuntime* rt, const char* title, const char*
 /* Process periodic updates (audio, animations, etc.) */
 void halgui_process_updates(void);
 
+/* Layout system */
+void halgui_set_layout(const char* panelName, const char* layoutType);
+void halgui_set_gap(const char* panelName, int gap);
+void halgui_set_align(const char* widgetName, const char* horizontal, const char* vertical);
+void halgui_set_widget_flex(const char* widgetName, float flex);
+void halgui_set_widget_margin(const char* widgetName, int top, int right, int bottom, int left);
+void halgui_apply_layout(const char* panelName);
+
 #endif /* HALGUI_RUNTIME_H */

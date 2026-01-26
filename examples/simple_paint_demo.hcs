@@ -1,0 +1,179 @@
+# Simple Paint Demo - Минималистичный графический редактор
+# Использует HalForms Paint API
+
+print "Starting Simple Paint..."
+
+# Initialize HalForms
+HalForms.init()
+
+# Create main form
+HalForms.createForm("mainForm", "Simple Paint", 850, 650, 0)
+
+# Глобальные переменные
+global currentTool = "brush"
+global brushSize = 5
+global currentR = 0
+global currentG = 0
+global currentB = 0
+
+# Панель инструментов
+HalForms.createControl("label", "lblTools", "Tools:", 10, 10, 80, 20)
+
+HalForms.createControl("button", "btnBrush", "Brush", 10, 35, 80, 30)
+HalForms.createControl("button", "btnPencil", "Pencil", 10, 70, 80, 30)
+HalForms.createControl("button", "btnEraser", "Eraser", 10, 105, 80, 30)
+HalForms.createControl("button", "btnFill", "Fill", 10, 140, 80, 30)
+
+# Размер кисти
+HalForms.createControl("label", "lblSize", "Size:", 10, 180, 80, 20)
+HalForms.createControl("trackbar", "sizeTrack", "", 10, 205, 80, 30)
+HalForms.setProperty("sizeTrack", "min", 1)
+HalForms.setProperty("sizeTrack", "max", 30)
+HalForms.setProperty("sizeTrack", "value", 5)
+
+# Цвета
+HalForms.createControl("label", "lblColors", "Colors:", 10, 250, 80, 20)
+
+HalForms.createControl("button", "btnBlack", "", 10, 275, 35, 30)
+HalForms.setProperty("btnBlack", "backcolor", "0,0,0")
+
+HalForms.createControl("button", "btnWhite", "", 50, 275, 35, 30)
+HalForms.setProperty("btnWhite", "backcolor", "255,255,255")
+
+HalForms.createControl("button", "btnRed", "", 10, 310, 35, 30)
+HalForms.setProperty("btnRed", "backcolor", "255,0,0")
+
+HalForms.createControl("button", "btnGreen", "", 50, 310, 35, 30)
+HalForms.setProperty("btnGreen", "backcolor", "0,255,0")
+
+HalForms.createControl("button", "btnBlue", "", 10, 345, 35, 30)
+HalForms.setProperty("btnBlue", "backcolor", "0,0,255")
+
+HalForms.createControl("button", "btnYellow", "", 50, 345, 35, 30)
+HalForms.setProperty("btnYellow", "backcolor", "255,255,0")
+
+# Кнопки действий
+HalForms.createControl("button", "btnClear", "Clear", 10, 390, 80, 30)
+HalForms.createControl("button", "btnUndo", "Undo", 10, 425, 80, 30)
+HalForms.createControl("button", "btnSave", "Save", 10, 460, 80, 30)
+HalForms.createControl("button", "btnLoad", "Load", 10, 495, 80, 30)
+
+# Фильтры
+HalForms.createControl("label", "lblFilters", "Filters:", 10, 540, 80, 20)
+HalForms.createControl("button", "btnGray", "Gray", 10, 565, 80, 25)
+
+# Холст для рисования
+HalForms.createPaintCanvas("canvas", 100, 10, 720, 580)
+HalForms.paintCanvasClear("canvas", 255, 255, 255)
+HalForms.paintCanvasSetTool("canvas", "brush")
+HalForms.paintCanvasSetColor("canvas", 0, 0, 0)
+HalForms.paintCanvasSetBrushSize("canvas", 5)
+
+# Обработчики инструментов
+on btnBrush clicked {
+    currentTool = "brush"
+    HalForms.paintCanvasSetTool("canvas", "brush")
+}
+
+on btnPencil clicked {
+    currentTool = "pencil"
+    HalForms.paintCanvasSetTool("canvas", "pencil")
+}
+
+on btnEraser clicked {
+    currentTool = "eraser"
+    HalForms.paintCanvasSetTool("canvas", "eraser")
+}
+
+on btnFill clicked {
+    currentTool = "fill"
+    HalForms.paintCanvasSetTool("canvas", "fill")
+}
+
+on sizeTrack changed {
+    brushSize = HalForms.getProperty("sizeTrack", "value")
+    HalForms.paintCanvasSetBrushSize("canvas", brushSize)
+}
+
+# Обработчики цветов
+on btnBlack clicked {
+    currentR = 0
+    currentG = 0
+    currentB = 0
+    HalForms.paintCanvasSetColor("canvas", 0, 0, 0)
+}
+
+on btnWhite clicked {
+    currentR = 255
+    currentG = 255
+    currentB = 255
+    HalForms.paintCanvasSetColor("canvas", 255, 255, 255)
+}
+
+on btnRed clicked {
+    currentR = 255
+    currentG = 0
+    currentB = 0
+    HalForms.paintCanvasSetColor("canvas", 255, 0, 0)
+}
+
+on btnGreen clicked {
+    currentR = 0
+    currentG = 255
+    currentB = 0
+    HalForms.paintCanvasSetColor("canvas", 0, 255, 0)
+}
+
+on btnBlue clicked {
+    currentR = 0
+    currentG = 0
+    currentB = 255
+    HalForms.paintCanvasSetColor("canvas", 0, 0, 255)
+}
+
+on btnYellow clicked {
+    currentR = 255
+    currentG = 255
+    currentB = 0
+    HalForms.paintCanvasSetColor("canvas", 255, 255, 0)
+}
+
+# Действия
+on btnClear clicked {
+    HalForms.paintCanvasClear("canvas", 255, 255, 255)
+}
+
+on btnUndo clicked {
+    HalForms.paintCanvasUndo("canvas")
+}
+
+on btnSave clicked {
+    global file = HalForms.saveFile("Save Image", "Bitmap Files (*.bmp)\0*.bmp\0", "drawing.bmp")
+    if file != "" {
+        global result = HalForms.paintCanvasSave("canvas", file)
+        if result {
+            HalForms.messageBox("Image saved successfully!", "Success", 0, 64)
+        } else {
+            HalForms.messageBox("Failed to save image!", "Error", 0, 16)
+        }
+    }
+}
+
+on btnLoad clicked {
+    global file = HalForms.openFile("Open Image", "Bitmap Files (*.bmp)\0*.bmp\0")
+    if file != "" {
+        global result = HalForms.paintCanvasLoad("canvas", file)
+        if result {
+            HalForms.messageBox("Image loaded successfully!", "Success", 0, 64)
+        } else {
+            HalForms.messageBox("Failed to load image!", "Error", 0, 16)
+        }
+    }
+}
+
+on btnGray clicked {
+    HalForms.paintCanvasGrayscale("canvas")
+}
+
+print "Simple Paint ready! Start drawing!"
+HalForms.run()

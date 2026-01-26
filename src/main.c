@@ -484,7 +484,7 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Create app.halproj for embedding */
-    char config_path[512];  /* Increased buffer size */
+    char config_path[1024];  /* Increased buffer size to avoid truncation */
     snprintf(config_path, sizeof(config_path), "%s\\app.halproj", build_dir);
     
     FILE* f = fopen(config_path, "w");
@@ -518,7 +518,7 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Create scripts bundle */
-    char bundle_path[512];  /* Increased buffer size */
+    char bundle_path[1024];  /* Increased buffer size to avoid truncation */
     snprintf(bundle_path, sizeof(bundle_path), "%s\\scripts.bundle", build_dir);
     
     if (!create_scripts_bundle(proj, bundle_path)) {
@@ -537,8 +537,8 @@ static int build_project(const char* proj_path) {
         fflush(stdout);
         
         /* Copy halcyon.ico to build directory */
-        char icon_src[512];  /* Increased buffer size */
-        char icon_dst[512];  /* Increased buffer size */
+        char icon_src[1024];  /* Increased buffer size to avoid truncation */
+        char icon_dst[1024];  /* Increased buffer size to avoid truncation */
         snprintf(icon_src, sizeof(icon_src), "%s\\logo\\halcyon.ico", exe_dir);
         snprintf(icon_dst, sizeof(icon_dst), "%s\\halcyon.ico", build_dir);
         
@@ -567,7 +567,7 @@ static int build_project(const char* proj_path) {
         }
         
         /* Create resource file */
-        char rc_path[512];  /* Increased buffer size */
+        char rc_path[1024];  /* Increased buffer size to avoid truncation */
         snprintf(rc_path, sizeof(rc_path), "%s\\launcher.rc", build_dir);
         
         f = fopen(rc_path, "w");
@@ -587,7 +587,7 @@ static int build_project(const char* proj_path) {
         
         /* Compile resources */
         char cmd[MAX_PATH * 4];
-        char res_obj[512];  /* Increased buffer size */
+        char res_obj[1024];  /* Increased buffer size to avoid truncation */
         snprintf(res_obj, sizeof(res_obj), "%s\\launcher_res.o", build_dir);
         
         /* Change to build directory for windres */
@@ -618,8 +618,8 @@ static int build_project(const char* proj_path) {
                 can_build_launcher = false;
             } else {
                 /* Copy compiled exe to dist */
-                char src_exe[512];  /* Increased buffer size */
-                char dst_exe[512];  /* Increased buffer size */
+                char src_exe[1024];  /* Increased buffer size to avoid truncation */
+                char dst_exe[1024];  /* Increased buffer size to avoid truncation */
                 snprintf(src_exe, sizeof(src_exe), "%s\\%s.exe", build_dir, proj->name);
                 snprintf(dst_exe, sizeof(dst_exe), "%s\\%s.exe", dist_dir, proj->name);
                 
@@ -640,15 +640,15 @@ static int build_project(const char* proj_path) {
         /* Fallback: create portable package with runtime + scripts */
         
         /* Create scripts directory */
-        char scripts_dir[512];  /* Increased buffer size */
+        char scripts_dir[1024];  /* Increased buffer size to avoid truncation */
         snprintf(scripts_dir, sizeof(scripts_dir), "%s\\scripts", dist_dir);
         create_dir_recursive(scripts_dir);
         
         /* Copy HalcyonRT.exe as runtime */
-        char halcyon_exe[512];  /* Increased buffer size */
+        char halcyon_exe[1024];  /* Increased buffer size to avoid truncation */
         snprintf(halcyon_exe, sizeof(halcyon_exe), "%s\\HalcyonRT.exe", exe_dir);
         
-        char runtime_path[512];  /* Increased buffer size */
+        char runtime_path[1024];  /* Increased buffer size to avoid truncation */
         snprintf(runtime_path, sizeof(runtime_path), "%s\\halcyon_runtime.exe", dist_dir);
         
         if (!copy_file_to(halcyon_exe, runtime_path)) {
@@ -660,8 +660,8 @@ static int build_project(const char* proj_path) {
         printf("  + halcyon_runtime.exe\n");
         
         /* Copy halcyon.ico for window icons */
-        char icon_src[512];  /* Increased buffer size */
-        char icon_dst[512];  /* Increased buffer size */
+        char icon_src[1024];  /* Increased buffer size to avoid truncation */
+        char icon_dst[1024];  /* Increased buffer size to avoid truncation */
         snprintf(icon_src, sizeof(icon_src), "%s\\logo\\halcyon.ico", exe_dir);
         snprintf(icon_dst, sizeof(icon_dst), "%s\\halcyon.ico", dist_dir);
         
@@ -687,7 +687,7 @@ static int build_project(const char* proj_path) {
                 if (*p == '/') *p = '\\';
             }
             
-            char dst_path[512];  /* Increased buffer size */
+            char dst_path[2048];  /* Increased buffer size to avoid truncation (scripts_dir + normalized_file) */
             snprintf(dst_path, sizeof(dst_path), "%s\\%s", scripts_dir, normalized_file);
             
             char* last_sep = strrchr(dst_path, '\\');
@@ -721,7 +721,7 @@ static int build_project(const char* proj_path) {
                     if (*p == '/') *p = '\\';
                 }
                 
-                char dst_path[512];  /* Increased buffer size */
+                char dst_path[2048];  /* Increased buffer size to avoid truncation (scripts_dir + normalized_entry) */
                 snprintf(dst_path, sizeof(dst_path), "%s\\%s", scripts_dir, normalized_entry);
                 
                 char* last_sep = strrchr(dst_path, '\\');
@@ -739,13 +739,13 @@ static int build_project(const char* proj_path) {
         }
         
         /* Copy app.halproj to dist */
-        char dist_config[512];  /* Increased buffer size */
+        char dist_config[1024];  /* Increased buffer size to avoid truncation */
         snprintf(dist_config, sizeof(dist_config), "%s\\app.halproj", dist_dir);
         copy_file_to(config_path, dist_config);
         printf("  + app.halproj\n");
         
         /* Create main exe (copy of runtime) */
-        char exe_path[512];  /* Increased buffer size */
+        char exe_path[1024];  /* Increased buffer size to avoid truncation */
         snprintf(exe_path, sizeof(exe_path), "%s\\%s.exe", dist_dir, proj->name);
         copy_file_to(runtime_path, exe_path);
         printf("  + %s.exe\n", proj->name);
@@ -755,7 +755,7 @@ static int build_project(const char* proj_path) {
     fflush(stdout);
     
     /* Clean up build temp directory */
-    char del_cmd[MAX_PATH * 2];
+    char del_cmd[1024];  /* Increased buffer size to avoid truncation */
     snprintf(del_cmd, sizeof(del_cmd), "rmdir /s /q \"%s\" 2>nul", build_dir);
     system(del_cmd);
     

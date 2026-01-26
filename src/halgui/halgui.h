@@ -298,6 +298,9 @@ struct HalWidget {
     int minWidth, minHeight;
     int maxWidth, maxHeight;
     
+    // Original sizes for responsive layout
+    int originalWidth, originalHeight;
+    
     // State
     uint32_t state;
     bool visible;
@@ -420,6 +423,13 @@ void hal_window_set_theme(HalWindow* window, HalTheme* theme);
 // Panel - Container widget
 HalWidget* hal_panel_create(HalWidget* parent);
 void hal_panel_set_layout(HalWidget* panel, HalLayoutType layout);
+void hal_panel_set_gap(HalWidget* panel, int gap);
+void hal_widget_apply_layout(HalWidget* widget);
+
+// General layout functions
+void hal_widget_set_layout(HalWidget* widget, HalLayoutType layout);
+void hal_widget_set_gap(HalWidget* widget, int gap);
+void hal_widget_set_flex(HalWidget* widget, float flex);
 
 // Button
 HalWidget* hal_button_create(HalWidget* parent, const char* text);
@@ -574,7 +584,6 @@ void hal_widget_set_border_radius(HalWidget* widget, int radius);
 void hal_widget_set_opacity(HalWidget* widget, float opacity);
 
 // Layout
-void hal_widget_set_flex(HalWidget* widget, float flex);
 void hal_widget_set_align(HalWidget* widget, HalAlignment h, HalAlignment v);
 
 // Responsive layout

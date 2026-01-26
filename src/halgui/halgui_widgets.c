@@ -7,6 +7,7 @@
 #include "halgui.h"
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* ============================================
    Widget Base Functions
@@ -23,6 +24,10 @@ static HalWidget* hal_widget_create(HalWidgetType type, HalWidget* parent) {
     widget->layout = HAL_LAYOUT_NONE;
     widget->alignH = HAL_ALIGN_LEFT;
     widget->alignV = HAL_ALIGN_MIDDLE;
+    
+    // Initialize original sizes to 0 (will be set when bounds are first set)
+    widget->originalWidth = 0;
+    widget->originalHeight = 0;
     
     if (parent) {
         hal_widget_add_child(parent, widget);
@@ -106,6 +111,14 @@ void hal_widget_set_bounds(HalWidget* widget, int x, int y, int width, int heigh
     widget->bounds.y = y;
     widget->bounds.width = width;
     widget->bounds.height = height;
+    
+    // Save original sizes if not set yet
+    if (widget->originalWidth == 0 && width > 0) {
+        widget->originalWidth = width;
+    }
+    if (widget->originalHeight == 0 && height > 0) {
+        widget->originalHeight = height;
+    }
 }
 
 void hal_widget_set_position(HalWidget* widget, int x, int y) {
@@ -218,10 +231,6 @@ void hal_widget_set_opacity(HalWidget* widget, float opacity) {
     if (widget) widget->opacity = opacity;
 }
 
-void hal_widget_set_flex(HalWidget* widget, float flex) {
-    if (widget) widget->flex = flex;
-}
-
 void hal_widget_set_align(HalWidget* widget, HalAlignment h, HalAlignment v) {
     if (!widget) return;
     widget->alignH = h;
@@ -272,6 +281,353 @@ HalWidget* hal_panel_create(HalWidget* parent) {
 void hal_panel_set_layout(HalWidget* panel, HalLayoutType layout) {
     if (panel && panel->type == HAL_WIDGET_PANEL) {
         panel->layout = layout;
+        // Apply layout immediately
+        hal_widget_apply_layout(panel);
+    }
+}
+
+void hal_panel_set_gap(HalWidget* panel, int gap) {
+    if (panel && panel->type == HAL_WIDGET_PANEL) {
+        panel->gap = gap;
+        // Re-apply layout with new gap
+        hal_widget_apply_layout(panel);
+    }
+}
+
+/* General layout functions for any widget */
+void hal_widget_set_layout(HalWidget* widget, HalLayoutType layout) {
+    if (!widget) return;
+    widget->layout = layout;
+    // Apply layout immediately
+    hal_widget_apply_layout(widget);
+}
+
+void hal_widget_set_gap(HalWidget* widget, int gap) {
+    if (!widget) return;
+    widget->gap = gap;
+    // Re-apply layout with new gap
+    hal_widget_apply_layout(widget);
+}
+
+void hal_widget_set_flex(HalWidget* widget, float flex) {
+    if (!widget) return;
+    widget->flex = flex;
+    // Re-apply parent layout if it's flex layout
+    if (widget->parent && widget->parent->layout == HAL_LAYOUT_FLEX) {
+        hal_widget_apply_layout(widget->parent);
+    }
+}
+
+/* ============================================
+   Layout System - Automatic positioning
+   ============================================ */
+
+void hal_widget_apply_layout(HalWidget* widget) {
+    if (!widget || widget->layout == HAL_LAYOUT_NONE) return;
+    
+    // Calculate content area (bounds minus padding)
+    int contentX = widget->bounds.x + widget->padding.left;
+    int contentY = widget->bounds.y + widget->padding.top;
+    int contentW = widget->bounds.width - widget->padding.left - widget->padding.right;
+    int contentH = widget->bounds.height - widget->padding.top - widget->padding.bottom;
+    
+    int currentX = contentX;
+    int currentY = contentY;
+    int gap = widget->gap > 0 ? widget->gap : 8; // Default gap 8px
+    
+    switch (widget->layout) {
+        case HAL_LAYOUT_HORIZONTAL: {
+            // Arrange children horizontally
+            currentX = contentX;
+            
+            // First pass: restore original sizes and position elements
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                // Restore original size if available
+                if (child->originalWidth > 0) {
+                    child->bounds.width = child->originalWidth;
+                }
+                if (child->originalHeight > 0) {
+                    child->bounds.height = child->originalHeight;
+                }
+                
+                // Apply margins
+                currentX += child->margin.left;
+                
+                // Position child
+                child->bounds.x = currentX;
+                child->bounds.y = contentY + child->margin.top;
+                
+                // Move to next position
+                currentX += child->bounds.width + child->margin.right + gap;
+            }
+            
+            // Second pass: check bounds and resize if necessary
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                // Check if child would exceed container bounds
+                int childEndX = child->bounds.x + child->bounds.width + child->margin.right;
+                int containerEndX = contentX + contentW;
+                
+                if (childEndX > containerEndX && contentW > 0) {
+                    // Resize child to fit within container
+                    int availableWidth = containerEndX - child->bounds.x - child->margin.right;
+                    if (availableWidth > 10) { // Minimum width
+                        child->bounds.width = availableWidth;
+                    }
+                }
+            }
+            
+            // Third pass: apply alignment after positioning
+            if (widget->alignH == HAL_ALIGN_CENTER || widget->alignH == HAL_ALIGN_RIGHT) {
+                // Calculate total width used
+                int totalUsedWidth = 0;
+                for (int i = 0; i < widget->childCount; i++) {
+                    HalWidget* child = widget->children[i];
+                    if (!child || !child->visible) continue;
+                    totalUsedWidth += child->bounds.width + child->margin.left + child->margin.right;
+                    if (i < widget->childCount - 1) totalUsedWidth += gap;
+                }
+                
+                if (totalUsedWidth < contentW) {
+                    int offset = 0;
+                    if (widget->alignH == HAL_ALIGN_CENTER) {
+                        offset = (contentW - totalUsedWidth) / 2;
+                    } else if (widget->alignH == HAL_ALIGN_RIGHT) {
+                        offset = contentW - totalUsedWidth;
+                    }
+                    
+                    // Shift all children by offset
+                    for (int i = 0; i < widget->childCount; i++) {
+                        HalWidget* child = widget->children[i];
+                        if (!child || !child->visible) continue;
+                        child->bounds.x += offset;
+                    }
+                }
+            }
+            break;
+        }
+        
+        case HAL_LAYOUT_VERTICAL: {
+            // Arrange children vertically
+            currentY = contentY;
+            
+            // First pass: restore original sizes and position elements
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                // Restore original size if available
+                if (child->originalWidth > 0) {
+                    child->bounds.width = child->originalWidth;
+                }
+                if (child->originalHeight > 0) {
+                    child->bounds.height = child->originalHeight;
+                }
+                
+                // Apply margins
+                currentY += child->margin.top;
+                
+                // Position child
+                child->bounds.x = contentX + child->margin.left;
+                child->bounds.y = currentY;
+                
+                // Move to next position
+                currentY += child->bounds.height + child->margin.bottom + gap;
+            }
+            
+            // Second pass: check bounds and resize if necessary
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                // Check if child would exceed container height bounds
+                int childEndY = child->bounds.y + child->bounds.height + child->margin.bottom;
+                int containerEndY = contentY + contentH;
+                
+                if (childEndY > containerEndY && contentH > 0) {
+                    // Resize child to fit within container
+                    int availableHeight = containerEndY - child->bounds.y - child->margin.bottom;
+                    if (availableHeight > 10) { // Minimum height
+                        child->bounds.height = availableHeight;
+                    }
+                }
+                
+                // Check if child would exceed container width bounds
+                int childEndX = child->bounds.x + child->bounds.width;
+                int containerEndX = contentX + contentW;
+                
+                if (childEndX > containerEndX && contentW > 0) {
+                    // Resize child width to fit within container
+                    int availableWidth = containerEndX - child->bounds.x;
+                    if (availableWidth > 10) { // Minimum width
+                        child->bounds.width = availableWidth;
+                    }
+                }
+            }
+            
+            // Third pass: apply horizontal alignment
+            if (widget->alignH == HAL_ALIGN_CENTER || widget->alignH == HAL_ALIGN_RIGHT) {
+                for (int i = 0; i < widget->childCount; i++) {
+                    HalWidget* child = widget->children[i];
+                    if (!child || !child->visible) continue;
+                    
+                    int availableWidth = contentW - child->margin.left - child->margin.right;
+                    if (child->bounds.width < availableWidth) {
+                        int offset = 0;
+                        if (widget->alignH == HAL_ALIGN_CENTER) {
+                            offset = (availableWidth - child->bounds.width) / 2;
+                        } else if (widget->alignH == HAL_ALIGN_RIGHT) {
+                            offset = availableWidth - child->bounds.width;
+                        }
+                        child->bounds.x = contentX + child->margin.left + offset;
+                    }
+                }
+            }
+            break;
+        }
+        
+        case HAL_LAYOUT_GRID: {
+            // Improved grid layout with bounds checking
+            int itemWidth = 120;  // Default item width
+            int itemHeight = 40;  // Default item height
+            
+            // Calculate columns based on available width
+            int columns = contentW > 0 ? (contentW + gap) / (itemWidth + gap) : 1;
+            if (columns < 1) columns = 1;
+            
+            int col = 0;
+            int row = 0;
+            
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                // Use child's actual size if specified, otherwise use defaults
+                int childW = child->bounds.width > 0 ? child->bounds.width : itemWidth;
+                int childH = child->bounds.height > 0 ? child->bounds.height : itemHeight;
+                
+                // Calculate position
+                int childX = contentX + col * (childW + gap) + child->margin.left;
+                int childY = contentY + row * (childH + gap) + child->margin.top;
+                
+                // Check bounds and adjust size if necessary
+                int childEndX = childX + childW;
+                int childEndY = childY + childH;
+                int containerEndX = contentX + contentW;
+                int containerEndY = contentY + contentH;
+                
+                if (childEndX > containerEndX && contentW > 0) {
+                    childW = containerEndX - childX;
+                    if (childW < 10) childW = 10; // Minimum width
+                }
+                
+                if (childEndY > containerEndY && contentH > 0) {
+                    childH = containerEndY - childY;
+                    if (childH < 10) childH = 10; // Minimum height
+                }
+                
+                // Position child
+                child->bounds.x = childX;
+                child->bounds.y = childY;
+                child->bounds.width = childW;
+                child->bounds.height = childH;
+                
+                // Move to next column
+                col++;
+                if (col >= columns) {
+                    col = 0;
+                    row++;
+                }
+            }
+            break;
+        }
+        
+        case HAL_LAYOUT_FLEX: {
+            // Flexible layout with flex weights and bounds checking
+            float totalFlex = 0.0f;
+            int fixedSpace = 0;
+            int visibleCount = 0;
+            
+            // Calculate total flex and fixed space
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                visibleCount++;
+                if (child->flex > 0.0f) {
+                    totalFlex += child->flex;
+                } else {
+                    fixedSpace += child->bounds.width + child->margin.left + child->margin.right;
+                }
+            }
+            
+            // Calculate available space for flex items
+            int gapSpace = visibleCount > 1 ? (visibleCount - 1) * gap : 0;
+            int flexSpace = contentW - fixedSpace - gapSpace;
+            if (flexSpace < 0) flexSpace = 0;
+            
+            // Arrange children
+            currentX = contentX;
+            for (int i = 0; i < widget->childCount; i++) {
+                HalWidget* child = widget->children[i];
+                if (!child || !child->visible) continue;
+                
+                currentX += child->margin.left;
+                
+                // Calculate width based on flex
+                if (child->flex > 0.0f && totalFlex > 0.0f) {
+                    int flexWidth = (int)(flexSpace * (child->flex / totalFlex));
+                    child->bounds.width = flexWidth > 10 ? flexWidth : 10; // Minimum width
+                }
+                
+                // Check if child would exceed container bounds
+                int childEndX = currentX + child->bounds.width + child->margin.right;
+                int containerEndX = contentX + contentW;
+                
+                if (childEndX > containerEndX && contentW > 0) {
+                    // Resize child to fit within container
+                    int availableWidth = containerEndX - currentX - child->margin.right;
+                    if (availableWidth > 10) { // Minimum width
+                        child->bounds.width = availableWidth;
+                    }
+                }
+                
+                // Check height bounds
+                int childEndY = contentY + child->margin.top + child->bounds.height;
+                int containerEndY = contentY + contentH;
+                
+                if (childEndY > containerEndY && contentH > 0) {
+                    // Resize child height to fit within container
+                    int availableHeight = containerEndY - contentY - child->margin.top;
+                    if (availableHeight > 10) { // Minimum height
+                        child->bounds.height = availableHeight;
+                    }
+                }
+                
+                child->bounds.x = currentX;
+                child->bounds.y = contentY + child->margin.top;
+                
+                currentX += child->bounds.width + child->margin.right;
+                if (i < widget->childCount - 1) currentX += gap;
+            }
+            break;
+        }
+        
+        default:
+            // HAL_LAYOUT_NONE or HAL_LAYOUT_ABSOLUTE - no automatic positioning
+            break;
+    }
+    
+    // Recursively apply layout to children
+    for (int i = 0; i < widget->childCount; i++) {
+        if (widget->children[i] && widget->children[i]->layout != HAL_LAYOUT_NONE) {
+            hal_widget_apply_layout(widget->children[i]);
+        }
     }
 }
 
@@ -285,6 +641,9 @@ HalWidget* hal_button_create(HalWidget* parent, const char* text) {
         button->data = text ? _strdup(text) : NULL;
         button->bounds.width = 120;
         button->bounds.height = 36;
+        // Save original sizes
+        button->originalWidth = 120;
+        button->originalHeight = 36;
     }
     return button;
 }

@@ -251,18 +251,19 @@ static void hal_draw_soft_shadow_aa(GpGraphics g, float x, float y, float w, flo
     if (elevation <= 0 || !g) return;
     
     int layers = 6;
-    float maxSpread = (float)elevation + 3;
+    float maxSpread = (float)elevation * 0.8f + 2;  // Reduced spread
     
     for (int i = layers; i >= 1; i--) {
         float t = (float)i / layers;
         float spread = maxSpread * t;
-        float offsetY = elevation * t * 0.6f;
+        float offsetY = elevation * t * 0.5f;  // Reduced vertical offset
         float alpha = (1.0f - t) * (1.0f - t);
-        uint8_t layerAlpha = (uint8_t)(baseAlpha * alpha * 0.4f);
+        uint8_t layerAlpha = (uint8_t)(baseAlpha * alpha * 0.35f);  // Reduced opacity
         if (layerAlpha < 2) continue;
         
         HalColor shadowColor = HAL_RGBA(0, 0, 0, layerAlpha);
-        hal_draw_rounded_rect_aa(g, x - spread/2, y + offsetY, w + spread, h + spread/2, r + spread/3, shadowColor, HAL_RGBA(0,0,0,0), 0);
+        // Draw shadow slightly smaller to avoid overlap
+        hal_draw_rounded_rect_aa(g, x - spread/2, y + offsetY - spread/4, w + spread, h + spread/2, r + spread/3, shadowColor, HAL_RGBA(0,0,0,0), 0);
     }
 }
 

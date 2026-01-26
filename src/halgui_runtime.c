@@ -26,6 +26,7 @@ typedef struct {
     int widget_capacity;
     HcsRuntime* hcs_runtime;
     bool initialized;
+    HalWidget* current_panel;  // Track current panel for layout
 } HalGuiRuntime;
 
 static HalGuiRuntime g_halgui = {0};
@@ -262,7 +263,7 @@ void halgui_create_control(HcsRuntime* rt, HcsAstNode* node) {
         }
     }
     
-    HalWidget* parent = (HalWidget*)g_halgui.main_window;
+    HalWidget* parent = g_halgui.current_panel ? g_halgui.current_panel : (HalWidget*)g_halgui.main_window;
     HalWidget* widget = NULL;
     HalWidgetType wtype = HAL_WIDGET_CUSTOM;
     
@@ -324,6 +325,11 @@ void halgui_create_control(HcsRuntime* rt, HcsAstNode* node) {
     else if (strcmp(type, "panel") == 0) {
         widget = hal_panel_create(parent);
         wtype = HAL_WIDGET_PANEL;
+        // Set this panel as current for child widgets
+        g_halgui.current_panel = widget;
+        
+        // Apply layout immediately after creating all children
+        // This will be called when layout is set via HalGUI.setLayout()
     }
     else if (strcmp(type, "calendar") == 0) {
         widget = hal_calendar_create(parent);
@@ -513,6 +519,14 @@ void halgui_register_handler(HcsAstNode* node) {
 
 void halgui_run(void) {
     if (!g_halgui.main_window) return;
+    
+    // Apply layout to all panels before showing window
+    for (int i = 0; i < g_halgui.widget_count; i++) {
+        HalWidget* widget = g_halgui.widgets[i].widget;
+        if (widget && widget->layout != HAL_LAYOUT_NONE) {
+            hal_widget_apply_layout(widget);
+        }
+    }
     
     // hal_window_show will call hal_init_native_widgets internally
     hal_window_show(g_halgui.main_window);
@@ -884,7 +898,7 @@ void halgui_audio_cleanup(void) {
 
 
 /* ============================================
-   Extended Widgets - New in 0.18.26
+   Extended Widgets - New in 0.20.26
    ============================================ */
 
 /* TreeView */
@@ -1046,4 +1060,101 @@ HcsValue* halgui_dialog_select_folder(HcsRuntime* rt, const char* title) {
         return result;
     }
     return value_null();
+}
+
+/* ============================================
+   Layout System Support
+   ============================================ */
+
+void halgui_set_layout(const char* panelName, const char* layoutType) {
+    HalWidget* panel = halgui_find_widget(panelName);
+    if (!panel) return;
+    
+    HalLayoutType layout = HAL_LAYOUT_NONE;
+    
+    if (strcmp(layoutType, "horizontal") == 0) {
+        layout = HAL_LAYOUT_HORIZONTAL;
+    } else if (strcmp(layoutType, "vertical") == 0) {
+        layout = HAL_LAYOUT_VERTICAL;
+    } else if (strcmp(layoutType, "grid") == 0) {
+        layout = HAL_LAYOUT_GRID;
+    } else if (strcmp(layoutType, "flex") == 0) {
+        layout = HAL_LAYOUT_FLEX;
+    }
+    
+    hal_widget_set_layout(panel, layout);
+    
+    // Force invalidation to trigger redraw
+    hal_widget_invalidate(panel);
+}
+
+void halgui_set_gap(const char* panelName, int gap) {
+    HalWidget* panel = halgui_find_widget(panelName);
+    if (panel) {
+        hal_widget_set_gap(panel, gap);
+        // Force invalidation to trigger redraw
+        hal_widget_invalidate(panel);
+    }
+}
+
+void halgui_set_align(const char* widgetName, const char* horizontal, const char* vertical) {
+    HalWidget* widget = halgui_find_widget(widgetName);
+    if (widget) {
+        HalAlignment h = HAL_ALIGN_LEFT;
+        HalAlignment v = HAL_ALIGN_MIDDLE;
+        
+        // Parse horizontal alignment
+        if (strcmp(horizontal, "center") == 0) {
+            h = HAL_ALIGN_CENTER;
+        } else if (strcmp(horizontal, "right") == 0) {
+            h = HAL_ALIGN_RIGHT;
+        } else {
+            h = HAL_ALIGN_LEFT;
+        }
+        
+        // Parse vertical alignment
+        if (strcmp(vertical, "top") == 0) {
+            v = HAL_ALIGN_TOP;
+        } else if (strcmp(vertical, "bottom") == 0) {
+            v = HAL_ALIGN_BOTTOM;
+        } else {
+            v = HAL_ALIGN_MIDDLE;
+        }
+        
+        hal_widget_set_align(widget, h, v);
+        
+        // Re-apply layout if this widget has one
+        if (widget->layout != HAL_LAYOUT_NONE) {
+            hal_widget_apply_layout(widget);
+        }
+        
+        // Force invalidation to trigger redraw
+        hal_widget_invalidate(widget);
+    }
+}
+
+void halgui_set_widget_flex(const char* widgetName, float flex) {
+    HalWidget* widget = halgui_find_widget(widgetName);
+    if (widget) {
+        hal_widget_set_flex(widget, flex);
+    }
+}
+
+void halgui_set_widget_margin(const char* widgetName, int top, int right, int bottom, int left) {
+    HalWidget* widget = halgui_find_widget(widgetName);
+    if (widget) {
+        hal_widget_set_margin(widget, top, right, bottom, left);
+        // Re-apply parent layout
+        if (widget->parent && widget->parent->layout != HAL_LAYOUT_NONE) {
+            hal_widget_apply_layout(widget->parent);
+        }
+    }
+}
+
+void halgui_apply_layout(const char* panelName) {
+    HalWidget* panel = halgui_find_widget(panelName);
+    if (panel) {
+        hal_widget_apply_layout(panel);
+        hal_widget_invalidate(panel);
+    }
 }

@@ -6,6 +6,8 @@
 
 #include "runtime.h"
 #include "value.h"
+#include <time.h>
+#include <windows.h>
 
 HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args);
 
@@ -56,6 +58,11 @@ extern HcsValue* builtin_console_hide_cursor(int argc, HcsValue** args);
 extern HcsValue* builtin_console_show_cursor(int argc, HcsValue** args);
 extern HcsValue* builtin_console_beep(int argc, HcsValue** args);
 extern HcsValue* builtin_sleep(int argc, HcsValue** args);
+
+/* New functions */
+extern HcsValue* builtin_string_split(int argc, HcsValue** args);
+extern HcsValue* builtin_math_random(int argc, HcsValue** args);
+extern HcsValue* builtin_tooltip_show(int argc, HcsValue** args);
 
 HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args) {
     HcsValue** arg_values = NULL;
@@ -135,6 +142,18 @@ HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args) {
         else if (strcmp(func, "showCursor") == 0) result = builtin_console_show_cursor(arg_count, arg_values);
         else if (strcmp(func, "beep") == 0) result = builtin_console_beep(arg_count, arg_values);
     }
+    else if (strncmp(name, "String.", 7) == 0) {
+        const char* func = name + 7;
+        if (strcmp(func, "split") == 0) result = builtin_string_split(arg_count, arg_values);
+    }
+    else if (strncmp(name, "Math.", 5) == 0) {
+        const char* func = name + 5;
+        if (strcmp(func, "random") == 0) result = builtin_math_random(arg_count, arg_values);
+    }
+    else if (strncmp(name, "Tooltip.", 8) == 0) {
+        const char* func = name + 8;
+        if (strcmp(func, "show") == 0) result = builtin_tooltip_show(arg_count, arg_values);
+    }
     
     if (arg_values) {
         for (int i = 0; i < arg_count; i++) {
@@ -144,4 +163,101 @@ HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args) {
     }
     
     return result;
+}
+
+
+/* ============================================
+   New Built-in Functions
+   ============================================ */
+
+/* String.split(str, delimiter) - Split string into array */
+HcsValue* builtin_string_split(int argc, HcsValue** args) {
+    if (argc < 2) return value_null();
+    
+    const char* str = value_to_string(args[0]);
+    const char* delim = value_to_string(args[1]);
+    
+    if (!str || !delim || strlen(delim) == 0) {
+        return value_null();
+    }
+    
+    /* Create array to hold results */
+    HcsValue* arr = value_array();
+    
+    /* Make a copy of the string since strtok modifies it */
+    char* str_copy = strdup(str);
+    char* token = strtok(str_copy, delim);
+    
+    while (token != NULL) {
+        value_array_push(arr, value_string(token));
+        token = strtok(NULL, delim);
+    }
+    
+    free(str_copy);
+    return arr;
+}
+
+/* Math.random(min, max) - Generate random number between min and max */
+HcsValue* builtin_math_random(int argc, HcsValue** args) {
+    static bool seeded = false;
+    if (!seeded) {
+        srand((unsigned int)time(NULL));
+        seeded = true;
+    }
+    
+    if (argc < 2) {
+        /* No arguments - return random float between 0 and 1 */
+        double r = (double)rand() / (double)RAND_MAX;
+        return value_number(r);
+    }
+    
+    double min = value_to_number(args[0]);
+    double max = value_to_number(args[1]);
+    
+    if (min > max) {
+        double temp = min;
+        min = max;
+        max = temp;
+    }
+    
+    /* Generate random number in range */
+    double range = max - min;
+    double r = min + (range * ((double)rand() / (double)RAND_MAX));
+    
+    return value_number(r);
+}
+
+/* Tooltip.show(text, x, y) - Show tooltip at position */
+HcsValue* builtin_tooltip_show(int argc, HcsValue** args) {
+    if (argc < 3) return value_bool(false);
+    
+    const char* text = value_to_string(args[0]);
+    int x = (int)value_to_number(args[1]);
+    int y = (int)value_to_number(args[2]);
+    
+    if (!text) return value_bool(false);
+    
+    /* Create a tooltip window */
+    HWND hwndTip = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        "STATIC",
+        text,
+        WS_POPUP | WS_BORDER | SS_CENTER,
+        x, y, 200, 30,
+        NULL, NULL, GetModuleHandle(NULL), NULL
+    );
+    
+    if (!hwndTip) return value_bool(false);
+    
+    /* Set background color to light yellow */
+    SetClassLongPtr(hwndTip, GCLP_HBRBACKGROUND, (LONG_PTR)CreateSolidBrush(RGB(255, 255, 200)));
+    
+    /* Show the tooltip */
+    ShowWindow(hwndTip, SW_SHOWNOACTIVATE);
+    UpdateWindow(hwndTip);
+    
+    /* Auto-hide after 3 seconds */
+    SetTimer(hwndTip, 1, 3000, NULL);
+    
+    return value_bool(true);
 }

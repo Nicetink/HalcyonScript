@@ -668,19 +668,94 @@ static bool hal_point_in_rect(int px, int py, int rx, int ry, int rw, int rh) {
     return px >= rx && px < rx + rw && py >= ry && py < ry + rh;
 }
 
+// Get absolute coordinates of a widget (relative to window)
+static void hal_get_absolute_bounds(HalWidget* widget, int* x, int* y, int* width, int* height) {
+    if (!widget) {
+        *x = *y = *width = *height = 0;
+        return;
+    }
+    
+    *x = widget->bounds.x;
+    *y = widget->bounds.y;
+    *width = widget->bounds.width;
+    *height = widget->bounds.height;
+    
+    // Walk up the parent chain to accumulate offsets
+    HalWidget* parent = widget->parent;
+    while (parent && parent->type != HAL_WIDGET_WINDOW) {
+        *x += parent->bounds.x;
+        *y += parent->bounds.y;
+        parent = parent->parent;
+    }
+}
+
+// Recursive hit test - check widget and its children with proper coordinate transformation
+static HalWidget* hal_hit_test_recursive(HalWidget* widget, int x, int y) {
+    if (!widget || !widget->visible) return NULL;
+    
+    // Check if point is inside this widget first
+    bool inside = hal_point_in_rect(x, y, widget->bounds.x, widget->bounds.y, 
+                                     widget->bounds.width, widget->bounds.height);
+    
+    if (!inside) {
+        return NULL; // Point is outside this widget, no need to check children
+    }
+    
+    // Check children first (in reverse order - top-most first)
+    // Transform coordinates to be relative to this widget's content area
+    int childX = x - widget->bounds.x;
+    int childY = y - widget->bounds.y;
+    
+    for (int i = widget->childCount - 1; i >= 0; i--) {
+        HalWidget* child = widget->children[i];
+        if (!child || !child->visible) continue;
+        
+        // Check if point is inside this child
+        bool childInside = hal_point_in_rect(childX, childY, child->bounds.x, child->bounds.y, 
+                                           child->bounds.width, child->bounds.height);
+        
+        if (childInside) {
+            // Recursively check this child and its children
+            HalWidget* hit = hal_hit_test_recursive(child, x, y);
+            if (hit) return hit;
+            
+            // If no deeper child was hit, return this child (if it's interactive)
+            if (child->type != HAL_WIDGET_PANEL) {
+                return child;
+            }
+        }
+    }
+    
+    // If no child was hit, return this widget (unless it's a panel)
+    if (widget->type == HAL_WIDGET_PANEL) {
+        return NULL; // Panels are not interactive themselves
+    }
+    
+    return widget;
+}
+
 // Simple hit test - check direct children of window only (no nesting offset issues)
 static HalWidget* hal_hit_test_simple(HalWindow* window, int x, int y) {
     if (!window) return NULL;
     
-    // Check children in reverse order (top-most first)
+    // Use recursive hit test to find the deepest widget at this position
     for (int i = window->base.childCount - 1; i >= 0; i--) {
         HalWidget* child = window->base.children[i];
         if (!child || !child->visible) continue;
         
-        // Check if point is inside this widget
-        if (hal_point_in_rect(x, y, child->bounds.x, child->bounds.y, 
-                              child->bounds.width, child->bounds.height)) {
-            return child;
+        // Check if point is inside this top-level child
+        bool inside = hal_point_in_rect(x, y, child->bounds.x, child->bounds.y, 
+                                       child->bounds.width, child->bounds.height);
+        
+        if (inside) {
+            // Recursively check this child and its children
+            HalWidget* hit = hal_hit_test_recursive(child, x, y);
+            if (hit) return hit;
+            
+            // If no deeper child was hit, return this child (if it's not a panel)
+            if (child->type != HAL_WIDGET_PANEL) {
+                return child;
+            }
         }
     }
     
@@ -747,13 +822,14 @@ static void hal_update_slider_value(HalWidget* slider, int mouseX, HalWindow* wi
         }
     }
     
-    // Invalidate slider area
+    // Invalidate slider area with padding
     float scale = hal_get_dpi_scale();
+    int padding = (int)(8 * scale);
     RECT rect = {
-        (LONG)(slider->bounds.x * scale),
-        (LONG)(slider->bounds.y * scale),
-        (LONG)((slider->bounds.x + slider->bounds.width) * scale),
-        (LONG)((slider->bounds.y + slider->bounds.height) * scale)
+        (LONG)(slider->bounds.x * scale) - padding,
+        (LONG)(slider->bounds.y * scale) - padding,
+        (LONG)((slider->bounds.x + slider->bounds.width) * scale) + padding,
+        (LONG)((slider->bounds.y + slider->bounds.height) * scale) + padding
     };
     InvalidateRect(window->hwnd, &rect, FALSE);
 }
@@ -791,13 +867,18 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
             hal_update_slider_value(target, event->mouseX, window);
         }
         
-        // Only invalidate the specific widget area
+        // Get absolute coordinates for invalidation
+        int absX, absY, absW, absH;
+        hal_get_absolute_bounds(target, &absX, &absY, &absW, &absH);
+        
+        // Only invalidate the specific widget area with padding
         float scale = hal_get_dpi_scale();
+        int padding = (int)(8 * scale);
         RECT rect = {
-            (LONG)(target->bounds.x * scale),
-            (LONG)(target->bounds.y * scale),
-            (LONG)((target->bounds.x + target->bounds.width) * scale),
-            (LONG)((target->bounds.y + target->bounds.height) * scale)
+            (LONG)(absX * scale) - padding,
+            (LONG)(absY * scale) - padding,
+            (LONG)((absX + absW) * scale) + padding,
+            (LONG)((absY + absH) * scale) + padding
         };
         InvalidateRect(window->hwnd, &rect, FALSE);
     }
@@ -811,13 +892,19 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
         // Clear active state
         if (g_activeWidget) {
             g_activeWidget->state &= ~HAL_STATE_ACTIVE;
-            // Only invalidate the specific widget area
+            
+            // Get absolute coordinates for invalidation
+            int absX, absY, absW, absH;
+            hal_get_absolute_bounds(g_activeWidget, &absX, &absY, &absW, &absH);
+            
+            // Only invalidate the specific widget area with padding
             float scale = hal_get_dpi_scale();
+            int padding = (int)(8 * scale);
             RECT rect = {
-                (LONG)(g_activeWidget->bounds.x * scale),
-                (LONG)(g_activeWidget->bounds.y * scale),
-                (LONG)((g_activeWidget->bounds.x + g_activeWidget->bounds.width) * scale),
-                (LONG)((g_activeWidget->bounds.y + g_activeWidget->bounds.height) * scale)
+                (LONG)(absX * scale) - padding,
+                (LONG)(absY * scale) - padding,
+                (LONG)((absX + absW) * scale) + padding,
+                (LONG)((absY + absH) * scale) + padding
             };
             InvalidateRect(window->hwnd, &rect, FALSE);
         }
@@ -840,12 +927,17 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
                 extern bool hal_calendar_handle_click(HalWidget* cal, int mouseX, int mouseY);
                 if (hal_calendar_handle_click(target, event->mouseX, event->mouseY)) {
                     // Calendar handled the click, invalidate to trigger redraw
+                    // Get absolute coordinates for invalidation
+                    int absX, absY, absW, absH;
+                    hal_get_absolute_bounds(target, &absX, &absY, &absW, &absH);
+                    
                     float scale = hal_get_dpi_scale();
+                    int padding = (int)(8 * scale);
                     RECT rect = {
-                        (LONG)(target->bounds.x * scale),
-                        (LONG)(target->bounds.y * scale),
-                        (LONG)((target->bounds.x + target->bounds.width) * scale),
-                        (LONG)((target->bounds.y + target->bounds.height) * scale)
+                        (LONG)(absX * scale) - padding,
+                        (LONG)(absY * scale) - padding,
+                        (LONG)((absX + absW) * scale) + padding,
+                        (LONG)((absY + absH) * scale) + padding
                     };
                     InvalidateRect(window->hwnd, &rect, FALSE);
                     UpdateWindow(window->hwnd);
@@ -867,6 +959,7 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
         // Update hover state
         static HalWidget* lastHover = NULL;
         
+        // Clear hover from previous widget if it's different from current target
         if (lastHover && lastHover != target) {
             lastHover->state &= ~HAL_STATE_HOVER;
             // Only invalidate widgets that have visual hover effects
@@ -878,38 +971,52 @@ static void hal_dispatch_mouse_event(HalWindow* window, HalEvent* event) {
                 lastHover->type == HAL_WIDGET_TOGGLE ||
                 lastHover->type == HAL_WIDGET_SLIDER ||
                 lastHover->type == HAL_WIDGET_TABS) {
+                
+                // Get absolute coordinates for invalidation
+                int absX, absY, absW, absH;
+                hal_get_absolute_bounds(lastHover, &absX, &absY, &absW, &absH);
+                
                 float scale = hal_get_dpi_scale();
+                // Add padding to ensure full redraw including shadows and borders
+                int padding = (int)(8 * scale);
                 RECT rect = {
-                    (LONG)(lastHover->bounds.x * scale),
-                    (LONG)(lastHover->bounds.y * scale),
-                    (LONG)((lastHover->bounds.x + lastHover->bounds.width) * scale),
-                    (LONG)((lastHover->bounds.y + lastHover->bounds.height) * scale)
+                    (LONG)(absX * scale) - padding,
+                    (LONG)(absY * scale) - padding,
+                    (LONG)((absX + absW) * scale) + padding,
+                    (LONG)((absY + absH) * scale) + padding
                 };
                 InvalidateRect(window->hwnd, &rect, FALSE);
             }
+            lastHover = NULL;
         }
         
+        // Set hover on current target only if it's an interactive widget
         if (target && target != (HalWidget*)window) {
-            target->state |= HAL_STATE_HOVER;
-            lastHover = target;
-            // Only invalidate widgets that have visual hover effects
+            // Only set hover state on interactive widgets
             if (target->type == HAL_WIDGET_BUTTON || 
                 target->type == HAL_WIDGET_INPUT ||
                 target->type == HAL_WIDGET_CHECKBOX ||
                 target->type == HAL_WIDGET_TOGGLE ||
                 target->type == HAL_WIDGET_SLIDER ||
                 target->type == HAL_WIDGET_TABS) {
+                target->state |= HAL_STATE_HOVER;
+                lastHover = target;
+                
+                // Get absolute coordinates for invalidation
+                int absX, absY, absW, absH;
+                hal_get_absolute_bounds(target, &absX, &absY, &absW, &absH);
+                
                 float scale = hal_get_dpi_scale();
+                // Add padding to ensure full redraw including shadows and borders
+                int padding = (int)(8 * scale);
                 RECT rect = {
-                    (LONG)(target->bounds.x * scale),
-                    (LONG)(target->bounds.y * scale),
-                    (LONG)((target->bounds.x + target->bounds.width) * scale),
-                    (LONG)((target->bounds.y + target->bounds.height) * scale)
+                    (LONG)(absX * scale) - padding,
+                    (LONG)(absY * scale) - padding,
+                    (LONG)((absX + absW) * scale) + padding,
+                    (LONG)((absY + absH) * scale) + padding
                 };
                 InvalidateRect(window->hwnd, &rect, FALSE);
             }
-        } else {
-            lastHover = NULL;
         }
     }
     
@@ -1082,6 +1189,11 @@ void hal_window_apply_layout(HalWindow* window) {
         HalWidget* child = window->base.children[i];
         if (child && child->hasConstraints) {
             hal_apply_widget_constraints(child, parentWidth, parentHeight, origWidth, origHeight);
+        }
+        
+        // Apply layout to panels after resizing
+        if (child && child->layout != HAL_LAYOUT_NONE) {
+            hal_widget_apply_layout(child);
         }
     }
 }

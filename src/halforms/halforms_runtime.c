@@ -58,7 +58,7 @@ static HalFormsRuntime g_halforms_rt = {0};
    Widget Management
    ============================================ */
 
-static void halforms_rt_add_widget(const char* name, void* control, int type) {
+void halforms_rt_add_widget(const char* name, void* control, int type) {
     if (g_halforms_rt.widgetCount >= g_halforms_rt.widgetCapacity) {
         int nc = g_halforms_rt.widgetCapacity == 0 ? 32 : g_halforms_rt.widgetCapacity * 2;
         g_halforms_rt.widgets = realloc(g_halforms_rt.widgets, sizeof(HalFormsWidget) * nc);

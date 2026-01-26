@@ -626,6 +626,80 @@ HFONT halforms_create_font(const char* name, int size, bool bold, bool italic);
 HICON halforms_load_icon(const char* path);
 HBITMAP halforms_load_bitmap(const char* path);
 
+/* ============================================
+   Paint Canvas - Advanced Drawing API
+   ============================================ */
+
+typedef struct PaintCanvas PaintCanvas;
+
+typedef enum {
+    PAINT_TOOL_PENCIL,
+    PAINT_TOOL_BRUSH,
+    PAINT_TOOL_ERASER,
+    PAINT_TOOL_FILL,
+    PAINT_TOOL_PICKER,
+    PAINT_TOOL_LINE,
+    PAINT_TOOL_RECT,
+    PAINT_TOOL_ELLIPSE,
+    PAINT_TOOL_POLYGON,
+    PAINT_TOOL_TEXT,
+    PAINT_TOOL_SELECT_RECT,
+    PAINT_TOOL_SELECT_LASSO,
+    PAINT_TOOL_SPRAY,
+    PAINT_TOOL_BLUR,
+    PAINT_TOOL_SHARPEN
+} PaintToolType;
+
+typedef enum {
+    HALBRUSH_ROUND,
+    HALBRUSH_SQUARE,
+    HALBRUSH_SOFT,
+    HALBRUSH_SPRAY,
+    HALBRUSH_CALLIGRAPHY
+} HalBrushType;
+
+/* Canvas creation and management */
+PaintCanvas* paintcanvas_create(HalForm* parent, int x, int y, int w, int h);
+void paintcanvas_destroy(PaintCanvas* canvas);
+void paintcanvas_clear(PaintCanvas* canvas, COLORREF color);
+
+/* Tool settings */
+void paintcanvas_set_tool(PaintCanvas* canvas, PaintToolType tool);
+void paintcanvas_set_forecolor(PaintCanvas* canvas, COLORREF color);
+void paintcanvas_set_backcolor(PaintCanvas* canvas, COLORREF color);
+void paintcanvas_set_brush_size(PaintCanvas* canvas, int size);
+void paintcanvas_set_brush_type(PaintCanvas* canvas, HalBrushType type);
+COLORREF paintcanvas_get_pixel_color(PaintCanvas* canvas, int x, int y);
+
+/* Drawing operations */
+void paintcanvas_draw_brush(PaintCanvas* canvas, int x, int y);
+void paintcanvas_draw_line_smooth(PaintCanvas* canvas, int x1, int y1, int x2, int y2);
+void paintcanvas_flood_fill(PaintCanvas* canvas, int x, int y, COLORREF fillColor);
+
+/* Selection tools */
+void paintcanvas_select_rect(PaintCanvas* canvas, int x1, int y1, int x2, int y2);
+void paintcanvas_copy_selection(PaintCanvas* canvas);
+void paintcanvas_paste_selection(PaintCanvas* canvas, int x, int y);
+void paintcanvas_delete_selection(PaintCanvas* canvas);
+
+/* Undo/Redo */
+void paintcanvas_save_state(PaintCanvas* canvas);
+void paintcanvas_undo(PaintCanvas* canvas);
+void paintcanvas_redo(PaintCanvas* canvas);
+
+/* Image filters */
+void paintcanvas_invert_colors(PaintCanvas* canvas);
+void paintcanvas_grayscale(PaintCanvas* canvas);
+void paintcanvas_adjust_brightness(PaintCanvas* canvas, int amount);
+void paintcanvas_blur(PaintCanvas* canvas, int radius);
+
+/* File operations */
+bool paintcanvas_save_bmp(PaintCanvas* canvas, const char* filename);
+bool paintcanvas_load_bmp(PaintCanvas* canvas, const char* filename);
+
+/* Runtime widget management */
+void halforms_rt_add_widget(const char* name, void* control, int type);
+
 #ifdef __cplusplus
 }
 #endif
