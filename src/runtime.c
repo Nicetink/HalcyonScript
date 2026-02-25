@@ -78,6 +78,15 @@ extern HcsValue* halgui_audio_set_mute(HcsRuntime* rt, const char* name, bool mu
 extern HcsValue* halgui_audio_is_muted(HcsRuntime* rt, const char* name);
 extern HcsValue* halgui_audio_destroy(HcsRuntime* rt, const char* name);
 
+// Forward declarations for Clipboard and Drag&Drop
+extern HcsValue* halgui_clipboard_set_text(HcsRuntime* rt, const char* text);
+extern HcsValue* halgui_clipboard_get_text(HcsRuntime* rt);
+extern HcsValue* halgui_clipboard_has_text(HcsRuntime* rt);
+extern HcsValue* halgui_widget_enable_drag(HcsRuntime* rt, const char* name, bool enable);
+extern HcsValue* halgui_widget_enable_drop(HcsRuntime* rt, const char* name, bool enable);
+extern HcsValue* halgui_widget_set_drag_data(HcsRuntime* rt, const char* name, const char* data);
+extern HcsValue* halgui_widget_get_drag_data(HcsRuntime* rt, const char* name);
+
 // Forward declarations for HalForms runtime
 extern void halforms_runtime_init(HcsRuntime* rt);
 extern void halforms_runtime_shutdown(void);
@@ -1503,6 +1512,82 @@ static HcsValue* call_builtin(HcsRuntime* rt, const char* name, HcsAstList* args
         }
     }
     
+    // Clipboard.* functions
+    if (strncmp(name, "Clipboard.", 10) == 0) {
+        const char* func = name + 10;
+        
+        // Clipboard.setText(text)
+        if (strcmp(func, "setText") == 0 && args->count >= 1) {
+            HcsValue* text_v = eval_expression(rt, args->items[0]);
+            char* text = value_to_string(text_v);
+            HcsValue* result = halgui_clipboard_set_text(rt, text);
+            free(text);
+            value_release(text_v);
+            return result;
+        }
+        
+        // Clipboard.getText()
+        if (strcmp(func, "getText") == 0) {
+            return halgui_clipboard_get_text(rt);
+        }
+        
+        // Clipboard.hasText()
+        if (strcmp(func, "hasText") == 0) {
+            return halgui_clipboard_has_text(rt);
+        }
+    }
+    
+    // Widget.* functions for drag & drop
+    if (strncmp(name, "Widget.", 7) == 0) {
+        const char* func = name + 7;
+        
+        // Widget.enableDrag(name, enable)
+        if (strcmp(func, "enableDrag") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* enable_v = eval_expression(rt, args->items[1]);
+            char* widget_name = value_to_string(name_v);
+            bool enable = value_to_bool(enable_v);
+            HcsValue* result = halgui_widget_enable_drag(rt, widget_name, enable);
+            free(widget_name);
+            value_release(name_v); value_release(enable_v);
+            return result;
+        }
+        
+        // Widget.enableDrop(name, enable)
+        if (strcmp(func, "enableDrop") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* enable_v = eval_expression(rt, args->items[1]);
+            char* widget_name = value_to_string(name_v);
+            bool enable = value_to_bool(enable_v);
+            HcsValue* result = halgui_widget_enable_drop(rt, widget_name, enable);
+            free(widget_name);
+            value_release(name_v); value_release(enable_v);
+            return result;
+        }
+        
+        // Widget.setDragData(name, data)
+        if (strcmp(func, "setDragData") == 0 && args->count >= 2) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            HcsValue* data_v = eval_expression(rt, args->items[1]);
+            char* widget_name = value_to_string(name_v);
+            char* data = value_to_string(data_v);
+            HcsValue* result = halgui_widget_set_drag_data(rt, widget_name, data);
+            free(widget_name); free(data);
+            value_release(name_v); value_release(data_v);
+            return result;
+        }
+        
+        // Widget.getDragData(name)
+        if (strcmp(func, "getDragData") == 0 && args->count >= 1) {
+            HcsValue* name_v = eval_expression(rt, args->items[0]);
+            char* widget_name = value_to_string(name_v);
+            HcsValue* result = halgui_widget_get_drag_data(rt, widget_name);
+            free(widget_name);
+            value_release(name_v);
+            return result;
+        }
+    }
+    
     extern HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args);
     HcsValue* sys_result = call_system_api(rt, name, args);
     if (sys_result) return sys_result;
@@ -1542,6 +1627,13 @@ HcsValue* eval_expression(HcsRuntime* rt, HcsAstNode* node) {
                 r = value_number(value_array_length(obj));
             else if (obj->type == HCS_VAL_STRING && strcmp(prop, "length") == 0)
                 r = value_number(strlen(obj->data.string));
+            else if (obj->type == HCS_VAL_OBJECT) {
+                // Handle object property access
+                extern HcsValue* value_object_get(HcsValue* obj, const char* key);
+                r = value_object_get(obj, prop);
+                if (r) r = value_copy(r);
+                else r = value_null();
+            }
             value_release(obj);
             return r;
         }

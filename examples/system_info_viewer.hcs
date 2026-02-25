@@ -1,0 +1,124 @@
+# System Information Viewer
+# Демонстрация новых функций: SysInfo API и Clipboard
+
+HalGUI.init()
+HalGUI.setTheme("dark")
+
+create window app "System Information" 600 500
+
+# Title
+create label title "System Information Viewer" x:10 y:10 width:580 height:30
+
+# OS Info
+create label osLabel "Operating System:" x:10 y:50 width:200 height:25
+create label osValue "null" x:220 y:50 width:360 height:25
+
+# Computer Name
+create label computerLabel "Computer Name:" x:10 y:80 width:200 height:25
+create label computerValue "null" x:220 y:80 width:360 height:25
+
+# User Name
+create label userLabel "User Name:" x:10 y:110 width:200 height:25
+create label userValue "null" x:220 y:110 width:360 height:25
+
+# CPU Info
+create label cpuLabel "CPU Cores:" x:10 y:140 width:200 height:25
+create label cpuValue "null" x:220 y:140 width:360 height:25
+
+# Memory Info
+create label memLabel "Memory:" x:10 y:170 width:200 height:25
+create label memValue "null / null MB" x:220 y:170 width:360 height:25
+
+# Disk Space Info
+create label diskLabel "Disk Space (C:):" x:10 y:200 width:200 height:25
+create label diskValue "null / null GB" x:220 y:200 width:360 height:25
+
+# Screen Resolution
+create label screenLabel "Screen Resolution:" x:10 y:230 width:200 height:25
+create label screenValue "null x null" x:220 y:230 width:360 height:25
+
+# Buttons
+create button loadBtn "Load Info" x:10 y:270 width:100 height:35
+create button copyBtn "Copy to Clipboard" x:120 y:270 width:150 height:35
+
+# Status
+create label statusLabel "Status: Information loaded!" x:10 y:320 width:580 height:25
+
+# Global variables for storing info
+global osInfo = ""
+global computerName = ""
+global userName = ""
+global cpuCount = 0
+global memTotal = 0
+global memAvail = 0
+global diskInfo = null
+global screenRes = null
+
+# Load system information immediately when program starts
+osInfo = SysInfo.getOS()
+set osValue.text = osInfo
+
+computerName = SysInfo.getComputerName()
+set computerValue.text = computerName
+
+userName = SysInfo.getUserName()
+set userValue.text = userName
+
+cpuCount = SysInfo.getCPUCount()
+set cpuValue.text = cpuCount
+
+memTotal = SysInfo.getMemoryTotal()
+memAvail = SysInfo.getMemoryAvailable()
+set memValue.text = memAvail + " / " + memTotal + " MB"
+
+diskInfo = SysInfo.getDiskSpace("C:\\")
+set diskValue.text = diskInfo.free + " / " + diskInfo.total + " GB"
+
+screenRes = SysInfo.getScreenResolution()
+set screenValue.text = screenRes.width + " x " + screenRes.height
+
+# Event handler for Load button
+when loadBtn clicked {
+    set statusLabel.text = "Status: Loading..."
+    
+    osInfo = SysInfo.getOS()
+    set osValue.text = osInfo
+    
+    computerName = SysInfo.getComputerName()
+    set computerValue.text = computerName
+    
+    userName = SysInfo.getUserName()
+    set userValue.text = userName
+    
+    cpuCount = SysInfo.getCPUCount()
+    set cpuValue.text = cpuCount
+    
+    memTotal = SysInfo.getMemoryTotal()
+    memAvail = SysInfo.getMemoryAvailable()
+    set memValue.text = memAvail + " / " + memTotal + " MB"
+    
+    diskInfo = SysInfo.getDiskSpace("C:\\")
+    set diskValue.text = diskInfo.free + " / " + diskInfo.total + " GB"
+    
+    screenRes = SysInfo.getScreenResolution()
+    set screenValue.text = screenRes.width + " x " + screenRes.height
+    
+    set statusLabel.text = "Status: Information loaded!"
+}
+
+# Event handler for Copy button
+when copyBtn clicked {
+    global text = "=== System Information ===\n"
+    text = text + "OS: " + osInfo + "\n"
+    text = text + "Computer: " + computerName + "\n"
+    text = text + "User: " + userName + "\n"
+    text = text + "CPU Cores: " + cpuCount + "\n"
+    text = text + "Memory: " + memAvail + " / " + memTotal + " MB\n"
+    text = text + "Disk C: " + diskInfo.free + " / " + diskInfo.total + " GB\n"
+    text = text + "Screen: " + screenRes.width + " x " + screenRes.height + "\n"
+    
+    Clipboard.setText(text)
+    set statusLabel.text = "Status: Copied to clipboard!"
+}
+
+HalGUI.run()

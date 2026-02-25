@@ -66,6 +66,7 @@ echo [3/5] Building HalcyonScript core...
 %GCC% %CFLAGS% -c src/process_api.c -o build/process_api.o
 %GCC% %CFLAGS% -c src/console_api.c -o build/console_api.o
 %GCC% %CFLAGS% -c src/compression_api.c -o build/compression_api.o
+%GCC% %CFLAGS% -c src/optical_api.c -o build/optical_api.o
 if errorlevel 1 goto error
 
 echo [4/5] Compiling resources...
@@ -110,6 +111,7 @@ echo [5/5] Linking HalcyonRT.exe...
     build/process_api.o ^
     build/console_api.o ^
     build/compression_api.o ^
+    build/optical_api.o ^
     build/halgui_core.o ^
     build/halgui_render.o ^
     build/halgui_widgets.o ^

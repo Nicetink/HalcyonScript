@@ -2,7 +2,7 @@
 
 A native programming language for building Windows desktop applications with a simple, readable syntax.
 
-**Version:** 0.20.26  
+**Version:** 0.26.26  
 **Runtime:** HalcyonRT
 
 ## Overview
@@ -16,6 +16,10 @@ HalcyonScript is a domain-specific language designed for rapid GUI application d
 
 - Simple, human-readable syntax
 - Native Windows GUI support via HalGUI (modern themed UI)
+- **NEW: DVD/CD API** - Complete optical drive control: read discs, manage trays, copy files
+- **NEW: System Information API** - Get OS, CPU, memory, disk, and screen info
+- **NEW: Clipboard API** - Copy/paste text to/from system clipboard
+- **NEW: Drag & Drop API** - Enable drag and drop functionality (preview)
 - **NEW: Automatic Layout System** - No more manual coordinate calculations!
 - **NEW: Paint API** - Complete graphics editor functionality with brushes, filters, and file support
 - **NEW: Console API** - Full terminal control with colors, cursor positioning, and input
@@ -24,7 +28,7 @@ HalcyonScript is a domain-specific language designed for rapid GUI application d
 - Built-in theming system (Dark, Light, Midnight, Ocean, Teal)
 - Event-driven programming model
 - File I/O operations
-- Audio playback support
+- Audio playbook support
 - Project-based builds with .halproj files
 - Single executable distribution
 - Windows XP/7/10/11 compatibility
@@ -308,6 +312,77 @@ on btn clicked {
 }
 ```
 
+### NEW: System Information API
+Get detailed system information:
+
+```
+# Get OS information
+var os = SysInfo.getOS()
+Console.writeln("Operating System: " + os)
+
+# Get computer and user info
+var computerName = SysInfo.getComputerName()
+var userName = SysInfo.getUserName()
+Console.writeln("Computer: " + computerName)
+Console.writeln("User: " + userName)
+
+# Get CPU information
+var cpuCount = SysInfo.getCPUCount()
+Console.writeln("CPU Cores: " + cpuCount)
+
+# Get memory information
+var memTotal = SysInfo.getMemoryTotal()
+var memAvail = SysInfo.getMemoryAvailable()
+Console.writeln("Memory: " + memAvail + " / " + memTotal + " MB")
+
+# Get disk space
+var diskInfo = SysInfo.getDiskSpace("C:\\")
+Console.writeln("Disk C: " + diskInfo.free + " / " + diskInfo.total + " GB")
+
+# Get screen resolution
+var screen = SysInfo.getScreenResolution()
+Console.writeln("Screen: " + screen.width + " x " + screen.height)
+```
+
+### NEW: Clipboard API
+Work with system clipboard:
+
+```
+# Copy text to clipboard
+Clipboard.setText("Hello from HalcyonScript!")
+
+# Check if clipboard has text
+if (Clipboard.hasText()) {
+    # Get text from clipboard
+    var text = Clipboard.getText()
+    Console.writeln("Clipboard: " + text)
+}
+
+# Example: Copy system info to clipboard
+var report = "=== System Report ===\n"
+report = report + "OS: " + SysInfo.getOS() + "\n"
+report = report + "User: " + SysInfo.getUserName() + "\n"
+Clipboard.setText(report)
+```
+
+### NEW: Drag & Drop API (Coming Soon)
+Enable drag and drop functionality:
+
+```
+# Enable drag for a widget
+Widget.enableDrag("myButton", true)
+Widget.setDragData("myButton", "Button data")
+
+# Enable drop for a widget
+Widget.enableDrop("myPanel", true)
+
+# Get drag data
+on myPanel dropped {
+    var data = Widget.getDragData("myButton")
+    Console.writeln("Dropped: " + data)
+}
+```
+
 ## Project Structure
 
 ```
@@ -374,6 +449,9 @@ HalcyonScript-Native/
 │   ├── LAYOUT_SYSTEM.md    # Layout system guide
 │   ├── CONSOLE_API.md      # Console API reference
 │   ├── PAINT_API.md        # Paint API reference
+│   ├── SYSINFO_API.md      # System Information API reference
+│   ├── CLIPBOARD_API.md    # Clipboard API reference
+│   ├── DVD_API.md          # DVD/CD Optical Drive API reference
 │   └── NEW_FUNCTIONS.md    # New built-in functions
 └── logo/               # Branding assets
 ```
@@ -398,6 +476,8 @@ See the `examples/` directory for sample applications:
 ### HalGUI Examples
 - `halgui_simple.hcs` - Basic GUI demo
 - `calc.hcs` - Calculator
+- `system_info_viewer.hcs` - System information viewer with clipboard support
+- `clipboard_dragdrop_demo.hcs` - Clipboard and drag & drop demo
 - `audioplayer.hcs` - Music player
 
 ### HalForms Examples
@@ -417,6 +497,10 @@ See the `examples/` directory for sample applications:
 - `simple_layout.hcs` - Automatic layout demonstration
 - `advanced_layout_app.hcs` - Complex layout with multiple panels
 - `responsive_layout_demo.hcs` - Responsive design patterns
+
+### NEW: DVD/CD Examples
+- `test_dvd_api.hcs` - Complete DVD API demonstration
+- `dvd_backup_tool.hcs` - Professional DVD backup utility
 
 ## License
 

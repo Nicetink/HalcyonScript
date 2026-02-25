@@ -1212,3 +1212,84 @@ void hal_window_enable_responsive(HalWindow* window, bool enable) {
         }
     }
 }
+
+/* ============================================
+   Drag & Drop Functions
+   ============================================ */
+
+void hal_widget_enable_drag(HalWidget* widget, bool enable) {
+    if (!widget) return;
+    
+    // Store drag enabled state in widget data
+    typedef struct {
+        bool dragEnabled;
+        bool dropEnabled;
+        char* dragData;
+    } HalDragDropData;
+    
+    HalDragDropData* data = (HalDragDropData*)widget->data;
+    if (!data && enable) {
+        data = (HalDragDropData*)calloc(1, sizeof(HalDragDropData));
+        widget->data = data;
+    }
+    
+    if (data) {
+        data->dragEnabled = enable;
+    }
+}
+
+void hal_widget_enable_drop(HalWidget* widget, bool enable) {
+    if (!widget) return;
+    
+    typedef struct {
+        bool dragEnabled;
+        bool dropEnabled;
+        char* dragData;
+    } HalDragDropData;
+    
+    HalDragDropData* data = (HalDragDropData*)widget->data;
+    if (!data && enable) {
+        data = (HalDragDropData*)calloc(1, sizeof(HalDragDropData));
+        widget->data = data;
+    }
+    
+    if (data) {
+        data->dropEnabled = enable;
+    }
+}
+
+void hal_widget_set_drag_data(HalWidget* widget, const char* data) {
+    if (!widget || !data) return;
+    
+    typedef struct {
+        bool dragEnabled;
+        bool dropEnabled;
+        char* dragData;
+    } HalDragDropData;
+    
+    HalDragDropData* dd = (HalDragDropData*)widget->data;
+    if (!dd) {
+        dd = (HalDragDropData*)calloc(1, sizeof(HalDragDropData));
+        widget->data = dd;
+    }
+    
+    if (dd->dragData) {
+        free(dd->dragData);
+    }
+    dd->dragData = _strdup(data);
+}
+
+char* hal_widget_get_drag_data(HalWidget* widget) {
+    if (!widget) return NULL;
+    
+    typedef struct {
+        bool dragEnabled;
+        bool dropEnabled;
+        char* dragData;
+    } HalDragDropData;
+    
+    HalDragDropData* data = (HalDragDropData*)widget->data;
+    if (!data || !data->dragData) return NULL;
+    
+    return _strdup(data->dragData);
+}

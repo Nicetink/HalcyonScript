@@ -646,6 +646,18 @@ void hal_timer_destroy(int timerId);
 // Clipboard
 void hal_clipboard_set_text(const char* text);
 char* hal_clipboard_get_text(void);
+bool hal_clipboard_has_text(void);
+
+// Drag & Drop
+void hal_widget_enable_drag(HalWidget* widget, bool enable);
+void hal_widget_enable_drop(HalWidget* widget, bool enable);
+void hal_widget_set_drag_data(HalWidget* widget, const char* data);
+char* hal_widget_get_drag_data(HalWidget* widget);
+
+// Clipboard
+void hal_clipboard_set_text(const char* text);
+char* hal_clipboard_get_text(void);
+bool hal_clipboard_has_text(void);
 
 // Screen info
 HalSize hal_screen_get_size(void);

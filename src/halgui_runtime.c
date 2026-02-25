@@ -898,7 +898,7 @@ void halgui_audio_cleanup(void) {
 
 
 /* ============================================
-   Extended Widgets - New in 0.20.26
+   Extended Widgets - New in 0.26.26
    ============================================ */
 
 /* TreeView */
@@ -1157,4 +1157,85 @@ void halgui_apply_layout(const char* panelName) {
         hal_widget_apply_layout(panel);
         hal_widget_invalidate(panel);
     }
+}
+
+
+/* ============================================
+   Clipboard Functions
+   ============================================ */
+
+/* Clipboard.setText(text) - Set clipboard text */
+HcsValue* halgui_clipboard_set_text(HcsRuntime* rt, const char* text) {
+    (void)rt;
+    if (!text) return value_bool(false);
+    
+    hal_clipboard_set_text(text);
+    return value_bool(true);
+}
+
+/* Clipboard.getText() - Get clipboard text */
+HcsValue* halgui_clipboard_get_text(HcsRuntime* rt) {
+    (void)rt;
+    char* text = hal_clipboard_get_text();
+    if (text) {
+        HcsValue* result = value_string(text);
+        free(text);
+        return result;
+    }
+    return value_string("");
+}
+
+/* Clipboard.hasText() - Check if clipboard has text */
+HcsValue* halgui_clipboard_has_text(HcsRuntime* rt) {
+    (void)rt;
+    return value_bool(hal_clipboard_has_text());
+}
+
+/* ============================================
+   Drag & Drop Functions
+   ============================================ */
+
+/* Widget.enableDrag(name, enable) - Enable drag for widget */
+HcsValue* halgui_widget_enable_drag(HcsRuntime* rt, const char* name, bool enable) {
+    (void)rt;
+    HalWidget* widget = halgui_find_widget(name);
+    if (!widget) return value_bool(false);
+    
+    hal_widget_enable_drag(widget, enable);
+    return value_bool(true);
+}
+
+/* Widget.enableDrop(name, enable) - Enable drop for widget */
+HcsValue* halgui_widget_enable_drop(HcsRuntime* rt, const char* name, bool enable) {
+    (void)rt;
+    HalWidget* widget = halgui_find_widget(name);
+    if (!widget) return value_bool(false);
+    
+    hal_widget_enable_drop(widget, enable);
+    return value_bool(true);
+}
+
+/* Widget.setDragData(name, data) - Set drag data for widget */
+HcsValue* halgui_widget_set_drag_data(HcsRuntime* rt, const char* name, const char* data) {
+    (void)rt;
+    HalWidget* widget = halgui_find_widget(name);
+    if (!widget || !data) return value_bool(false);
+    
+    hal_widget_set_drag_data(widget, data);
+    return value_bool(true);
+}
+
+/* Widget.getDragData(name) - Get drag data from widget */
+HcsValue* halgui_widget_get_drag_data(HcsRuntime* rt, const char* name) {
+    (void)rt;
+    HalWidget* widget = halgui_find_widget(name);
+    if (!widget) return value_string("");
+    
+    char* data = hal_widget_get_drag_data(widget);
+    if (data) {
+        HcsValue* result = value_string(data);
+        free(data);
+        return result;
+    }
+    return value_string("");
 }

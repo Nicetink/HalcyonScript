@@ -3,7 +3,7 @@
 ; Non-commercial use only
 
 #define MyAppName "HalcyonRT"
-#define MyAppVersion "0.20.26"
+#define MyAppVersion "0.26.26"
 #define MyAppPublisher "KAInaps"
 #define MyAppURL "https://halcyonscript.ddns.net/"
 #define MyAppExeName "Halcyon.exe"

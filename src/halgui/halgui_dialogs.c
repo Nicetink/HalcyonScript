@@ -266,6 +266,11 @@ char* hal_clipboard_get_text(void) {
     return result;
 }
 
+bool hal_clipboard_has_text(void) {
+    return IsClipboardFormatAvailable(CF_UNICODETEXT) != 0 || 
+           IsClipboardFormatAvailable(CF_TEXT) != 0;
+}
+
 /* ============================================
    Timers
    ============================================ */

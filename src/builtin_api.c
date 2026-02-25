@@ -64,6 +64,30 @@ extern HcsValue* builtin_string_split(int argc, HcsValue** args);
 extern HcsValue* builtin_math_random(int argc, HcsValue** args);
 extern HcsValue* builtin_tooltip_show(int argc, HcsValue** args);
 
+/* System Info functions */
+extern HcsValue* builtin_sysinfo_get_os(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_computer_name(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_user_name(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_cpu_count(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_memory_total(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_memory_available(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_disk_space(int argc, HcsValue** args);
+extern HcsValue* builtin_sysinfo_get_screen_resolution(int argc, HcsValue** args);
+
+/* DVD/CD Optical Drive functions */
+extern HcsValue* builtin_dvd_get_drives(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_is_disc_present(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_get_disc_info(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_eject(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_close_tray(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_read_files(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_copy_file(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_get_capabilities(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_write_file(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_create_directory(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_verify_file(int argc, HcsValue** args);
+extern HcsValue* builtin_dvd_get_write_capacity(int argc, HcsValue** args);
+
 HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args) {
     HcsValue** arg_values = NULL;
     int arg_count = 0;
@@ -153,6 +177,32 @@ HcsValue* call_system_api(HcsRuntime* rt, const char* name, HcsAstList* args) {
     else if (strncmp(name, "Tooltip.", 8) == 0) {
         const char* func = name + 8;
         if (strcmp(func, "show") == 0) result = builtin_tooltip_show(arg_count, arg_values);
+    }
+    else if (strncmp(name, "SysInfo.", 8) == 0) {
+        const char* func = name + 8;
+        if (strcmp(func, "getOS") == 0) result = builtin_sysinfo_get_os(arg_count, arg_values);
+        else if (strcmp(func, "getComputerName") == 0) result = builtin_sysinfo_get_computer_name(arg_count, arg_values);
+        else if (strcmp(func, "getUserName") == 0) result = builtin_sysinfo_get_user_name(arg_count, arg_values);
+        else if (strcmp(func, "getCPUCount") == 0) result = builtin_sysinfo_get_cpu_count(arg_count, arg_values);
+        else if (strcmp(func, "getMemoryTotal") == 0) result = builtin_sysinfo_get_memory_total(arg_count, arg_values);
+        else if (strcmp(func, "getMemoryAvailable") == 0) result = builtin_sysinfo_get_memory_available(arg_count, arg_values);
+        else if (strcmp(func, "getDiskSpace") == 0) result = builtin_sysinfo_get_disk_space(arg_count, arg_values);
+        else if (strcmp(func, "getScreenResolution") == 0) result = builtin_sysinfo_get_screen_resolution(arg_count, arg_values);
+    }
+    else if (strncmp(name, "DVD.", 4) == 0) {
+        const char* func = name + 4;
+        if (strcmp(func, "getDrives") == 0) result = builtin_dvd_get_drives(arg_count, arg_values);
+        else if (strcmp(func, "isDiscPresent") == 0) result = builtin_dvd_is_disc_present(arg_count, arg_values);
+        else if (strcmp(func, "getDiscInfo") == 0) result = builtin_dvd_get_disc_info(arg_count, arg_values);
+        else if (strcmp(func, "eject") == 0) result = builtin_dvd_eject(arg_count, arg_values);
+        else if (strcmp(func, "closeTray") == 0) result = builtin_dvd_close_tray(arg_count, arg_values);
+        else if (strcmp(func, "readFiles") == 0) result = builtin_dvd_read_files(arg_count, arg_values);
+        else if (strcmp(func, "copyFile") == 0) result = builtin_dvd_copy_file(arg_count, arg_values);
+        else if (strcmp(func, "getCapabilities") == 0) result = builtin_dvd_get_capabilities(arg_count, arg_values);
+        else if (strcmp(func, "writeFile") == 0) result = builtin_dvd_write_file(arg_count, arg_values);
+        else if (strcmp(func, "createDirectory") == 0) result = builtin_dvd_create_directory(arg_count, arg_values);
+        else if (strcmp(func, "verifyFile") == 0) result = builtin_dvd_verify_file(arg_count, arg_values);
+        else if (strcmp(func, "getWriteCapacity") == 0) result = builtin_dvd_get_write_capacity(arg_count, arg_values);
     }
     
     if (arg_values) {
@@ -260,4 +310,166 @@ HcsValue* builtin_tooltip_show(int argc, HcsValue** args) {
     SetTimer(hwndTip, 1, 3000, NULL);
     
     return value_bool(true);
+}
+
+
+/* ============================================
+   System Information Functions
+   ============================================ */
+
+/* SysInfo.getOS() - Get operating system name and version */
+HcsValue* builtin_sysinfo_get_os(int argc, HcsValue** args) {
+    OSVERSIONINFOEX osvi;
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    
+    char osName[256];
+    
+    // Get Windows version
+    typedef LONG (WINAPI *RtlGetVersionPtr)(PRTL_OSVERSIONINFOW);
+    HMODULE hMod = GetModuleHandleW(L"ntdll.dll");
+    if (hMod) {
+        RtlGetVersionPtr RtlGetVersion = (RtlGetVersionPtr)GetProcAddress(hMod, "RtlGetVersion");
+        if (RtlGetVersion) {
+            RTL_OSVERSIONINFOW rovi = { 0 };
+            rovi.dwOSVersionInfoSize = sizeof(rovi);
+            if (RtlGetVersion(&rovi) == 0) {
+                if (rovi.dwMajorVersion == 10 && rovi.dwBuildNumber >= 22000) {
+                    sprintf(osName, "Windows 11 (Build %lu)", rovi.dwBuildNumber);
+                } else if (rovi.dwMajorVersion == 10) {
+                    sprintf(osName, "Windows 10 (Build %lu)", rovi.dwBuildNumber);
+                } else if (rovi.dwMajorVersion == 6 && rovi.dwMinorVersion == 3) {
+                    strcpy(osName, "Windows 8.1");
+                } else if (rovi.dwMajorVersion == 6 && rovi.dwMinorVersion == 2) {
+                    strcpy(osName, "Windows 8");
+                } else if (rovi.dwMajorVersion == 6 && rovi.dwMinorVersion == 1) {
+                    strcpy(osName, "Windows 7");
+                } else {
+                    sprintf(osName, "Windows %lu.%lu", rovi.dwMajorVersion, rovi.dwMinorVersion);
+                }
+                return value_string(osName);
+            }
+        }
+    }
+    
+    strcpy(osName, "Windows");
+    return value_string(osName);
+}
+
+/* SysInfo.getComputerName() - Get computer name */
+HcsValue* builtin_sysinfo_get_computer_name(int argc, HcsValue** args) {
+    char computerName[MAX_COMPUTERNAME_LENGTH + 1];
+    DWORD size = sizeof(computerName);
+    
+    if (GetComputerNameA(computerName, &size)) {
+        return value_string(computerName);
+    }
+    
+    return value_string("Unknown");
+}
+
+/* SysInfo.getUserName() - Get current user name */
+HcsValue* builtin_sysinfo_get_user_name(int argc, HcsValue** args) {
+    char userName[256];
+    DWORD size = sizeof(userName);
+    
+    if (GetUserNameA(userName, &size)) {
+        return value_string(userName);
+    }
+    
+    return value_string("Unknown");
+}
+
+/* SysInfo.getCPUCount() - Get number of CPU cores */
+HcsValue* builtin_sysinfo_get_cpu_count(int argc, HcsValue** args) {
+    SYSTEM_INFO sysInfo;
+    GetSystemInfo(&sysInfo);
+    return value_number((double)sysInfo.dwNumberOfProcessors);
+}
+
+/* SysInfo.getMemoryTotal() - Get total physical memory in MB */
+HcsValue* builtin_sysinfo_get_memory_total(int argc, HcsValue** args) {
+    MEMORYSTATUSEX memStatus;
+    memStatus.dwLength = sizeof(memStatus);
+    
+    if (GlobalMemoryStatusEx(&memStatus)) {
+        double totalMB = (double)memStatus.ullTotalPhys / (1024.0 * 1024.0);
+        return value_number(totalMB);
+    }
+    
+    return value_number(0);
+}
+
+/* SysInfo.getMemoryAvailable() - Get available physical memory in MB */
+HcsValue* builtin_sysinfo_get_memory_available(int argc, HcsValue** args) {
+    MEMORYSTATUSEX memStatus;
+    memStatus.dwLength = sizeof(memStatus);
+    
+    if (GlobalMemoryStatusEx(&memStatus)) {
+        double availMB = (double)memStatus.ullAvailPhys / (1024.0 * 1024.0);
+        return value_number(availMB);
+    }
+    
+    return value_number(0);
+}
+
+/* SysInfo.getDiskSpace(drive) - Get disk space info for drive (e.g., "C:\\") */
+HcsValue* builtin_sysinfo_get_disk_space(int argc, HcsValue** args) {
+    if (argc < 1) return value_null();
+    
+    const char* drive = value_to_string(args[0]);
+    if (!drive) return value_null();
+    
+    ULARGE_INTEGER freeBytesAvailable, totalBytes, totalFreeBytes;
+    
+    // Try different drive path formats
+    char drivePath[10];
+    if (strlen(drive) == 1) {
+        // If just "C", convert to "C:\\"
+        sprintf(drivePath, "%s:\\", drive);
+    } else if (strlen(drive) == 2 && drive[1] == ':') {
+        // If "C:", convert to "C:\\"
+        sprintf(drivePath, "%s\\", drive);
+    } else {
+        // Use as-is
+        strcpy(drivePath, drive);
+    }
+    
+    if (GetDiskFreeSpaceExA(drivePath, &freeBytesAvailable, &totalBytes, &totalFreeBytes)) {
+        HcsValue* result = value_object();
+        
+        double totalGB = (double)totalBytes.QuadPart / (1024.0 * 1024.0 * 1024.0);
+        double freeGB = (double)totalFreeBytes.QuadPart / (1024.0 * 1024.0 * 1024.0);
+        double usedGB = totalGB - freeGB;
+        
+        value_object_set(result, "total", value_number(totalGB));
+        value_object_set(result, "free", value_number(freeGB));
+        value_object_set(result, "used", value_number(usedGB));
+        
+        return result;
+    }
+    
+    return value_null();
+}
+
+/* SysInfo.getScreenResolution() - Get screen resolution */
+HcsValue* builtin_sysinfo_get_screen_resolution(int argc, HcsValue** args) {
+    int width = GetSystemMetrics(SM_CXSCREEN);
+    int height = GetSystemMetrics(SM_CYSCREEN);
+    
+    // If GetSystemMetrics fails, try alternative method
+    if (width == 0 || height == 0) {
+        HDC hdc = GetDC(NULL);
+        if (hdc) {
+            width = GetDeviceCaps(hdc, HORZRES);
+            height = GetDeviceCaps(hdc, VERTRES);
+            ReleaseDC(NULL, hdc);
+        }
+    }
+    
+    HcsValue* result = value_object();
+    value_object_set(result, "width", value_number((double)width));
+    value_object_set(result, "height", value_number((double)height));
+    
+    return result;
 }
