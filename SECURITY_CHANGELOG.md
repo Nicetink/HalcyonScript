@@ -169,14 +169,6 @@ All fixes have been tested against:
 
 ---
 
-## Credits
-
-Security vulnerabilities discovered and fixed by the HalcyonScript development team.
-
-For security issues, please contact: security@halcyonscript.com
-
----
-
 ## Verification
 
 To verify you have the secure version:
