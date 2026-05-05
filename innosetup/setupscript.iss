@@ -6,7 +6,7 @@
 #define MyAppVersion "0.27.26"
 #define MyAppPublisher "KAInaps"
 #define MyAppURL "https://halcyonscript.ddns.net/"
-#define MyAppExeName "Halcyon.exe"
+#define MyAppExeName "HalcyonRT.exe"
 #define MyAppAssocName "HalcyonScript App"
 #define MyAppAssocExt ".hcs"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
@@ -35,13 +35,13 @@ ArchitecturesInstallIn64BitMode=x64compatible
 ChangesAssociations=yes
 ChangesEnvironment=yes
 DisableProgramGroupPage=yes
-LicenseFile=C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\license.rtf
-InfoAfterFile=C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\infoo.txt
+LicenseFile=C:\Users\lim\Desktop\halcyon\HalcyonScript\license.rtf
+InfoAfterFile=C:\Users\lim\Desktop\halcyon\HalcyonScript\infoo.txt
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
-OutputDir=C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\innosetup
+OutputDir=C:\Users\lim\Desktop\halcyon\HalcyonScript\innosetup
 OutputBaseFilename=setuphsrt
-SetupIconFile=C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\logo\halcyon.ico
+SetupIconFile=C:\Users\lim\Desktop\halcyon\HalcyonScript\logo\halcyon.ico
 SolidCompression=yes
 WizardStyle=modern polar
 
@@ -54,9 +54,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "envpath"; Description: "Add to PATH (allows running 'halcyon' from command line)"; GroupDescription: "System Integration:"
 
 [Files]
-Source: "C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
-Source: "C:\Users\oem\Desktop\Halcyon\HalcyonScript-Native\dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+; Основной исполняемый файл
+Source: "C:\Users\lim\Desktop\halcyon\HalcyonScript\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+
+; Копируем ВСЁ из папки dist (самый удобный и надёжный способ)
+Source: "C:\Users\lim\Desktop\halcyon\HalcyonScript\dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; Если нужно исключить какие-то файлы (например, старый установщик)
+; Excludes: "unins*.exe;unins*.dat"
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\{#MyAppAssocExt}\OpenWithProgids"; ValueType: string; ValueName: "{#MyAppAssocKey}"; ValueData: ""; Flags: uninsdeletevalue
