@@ -7,6 +7,32 @@
 #include "runtime.h"
 #include <windows.h>
 
+// Validate registry key path to prevent unauthorized access
+static int validate_registry_path(const char* root, const char* key_path) {
+    if (!root || !key_path) return 0;
+    
+    // Only allow HKCU for security
+    if (strcmp(root, "HKCU") != 0) {
+        return 0; // Block HKLM, HKCR, HKU access
+    }
+    
+    // Whitelist allowed key paths under HKCU
+    const char* allowed_paths[] = {
+        "Software\\HalcyonScript\\",
+        "Software\\MyApp\\",
+        "Environment",
+        NULL
+    };
+    
+    for (int i = 0; allowed_paths[i]; i++) {
+        if (strncmp(key_path, allowed_paths[i], strlen(allowed_paths[i])) == 0) {
+            return 1;
+        }
+    }
+    
+    return 0; // Path not in whitelist
+}
+
 static HKEY get_root_key(const char* root) {
     if (strcmp(root, "HKLM") == 0) return HKEY_LOCAL_MACHINE;
     if (strcmp(root, "HKCU") == 0) return HKEY_CURRENT_USER;
@@ -19,6 +45,13 @@ HcsValue* builtin_reg_write(int argc, HcsValue** args) {
     if (argc != 4) return value_bool(false);
     if (args[0]->type != HCS_VAL_STRING || args[1]->type != HCS_VAL_STRING || 
         args[2]->type != HCS_VAL_STRING) return value_bool(false);
+    
+    // Validate registry access
+    if (!validate_registry_path(args[0]->data.string, args[1]->data.string)) {
+        fprintf(stderr, "Security Error: Registry access denied: %s\\%s\n", 
+                args[0]->data.string, args[1]->data.string);
+        return value_bool(false);
+    }
     
     HKEY root = get_root_key(args[0]->data.string);
     HKEY key;
@@ -46,6 +79,13 @@ HcsValue* builtin_reg_write(int argc, HcsValue** args) {
 HcsValue* builtin_reg_read(int argc, HcsValue** args) {
     if (argc != 3 || args[0]->type != HCS_VAL_STRING || args[1]->type != HCS_VAL_STRING || 
         args[2]->type != HCS_VAL_STRING) return value_null();
+    
+    // Validate registry access
+    if (!validate_registry_path(args[0]->data.string, args[1]->data.string)) {
+        fprintf(stderr, "Security Error: Registry access denied: %s\\%s\n", 
+                args[0]->data.string, args[1]->data.string);
+        return value_null();
+    }
     
     HKEY root = get_root_key(args[0]->data.string);
     HKEY key;

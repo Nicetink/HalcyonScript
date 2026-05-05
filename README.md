@@ -2,8 +2,21 @@
 
 A native programming language for building Windows desktop applications with a simple, readable syntax.
 
-**Version:** 0.26.26  
+**Version:** 0.27.26  
 **Runtime:** HalcyonRT
+
+## Security Update (v0.27.26)
+
+This version includes **critical security fixes** that address multiple vulnerabilities:
+
+- **Command Injection Protection** - Added input validation and command whitelisting
+- **Buffer Overflow Prevention** - Replaced unsafe string functions with bounds-checked alternatives
+- **Path Traversal Protection** - Implemented file path validation to prevent directory traversal attacks
+- **Registry Access Control** - Restricted registry access to safe user-level keys only
+- **Memory Safety** - Added overflow checks and proper memory management
+- **Input Validation** - Enhanced validation for all user-supplied data
+
+** IMPORTANT:** This update significantly improves security. Please update immediately if using previous versions.
 
 ## Overview
 

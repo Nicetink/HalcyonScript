@@ -189,9 +189,18 @@ static HcsToken* read_string(HcsLexer* l, char quote) {
     lexer_advance(l); /* Skip opening quote */
     
     char* buffer = (char*)malloc(MAX_STRING_LEN);
+    if (!buffer) return NULL;
+    
     int buf_pos = 0;
     
     while (l->position < l->length && lexer_current(l) != quote) {
+        // Check buffer bounds to prevent overflow
+        if (buf_pos >= MAX_STRING_LEN - 1) {
+            fprintf(stderr, "Error: String literal too long (max %d characters)\n", MAX_STRING_LEN - 1);
+            free(buffer);
+            return NULL;
+        }
+        
         if (lexer_current(l) == '\\' && l->position + 1 < l->length) {
             lexer_advance(l);
             char escaped = lexer_current(l);

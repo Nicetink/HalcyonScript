@@ -10,8 +10,49 @@
 #include <shlobj.h>
 #include <objbase.h>
 
+// Validate command to prevent injection attacks
+static int validate_command(const char* cmd) {
+    if (!cmd || strlen(cmd) == 0) return 0;
+    
+    // Check for dangerous characters and sequences
+    const char* dangerous[] = {
+        "&", "|", ";", "`", "$", "(", ")", "{", "}", 
+        "<", ">", ">>", "<<", "&&", "||", "^", "%",
+        "del ", "rmdir ", "format ", "shutdown ", "reboot ",
+        "net ", "sc ", "reg ", "wmic ", "powershell",
+        NULL
+    };
+    
+    for (int i = 0; dangerous[i]; i++) {
+        if (strstr(cmd, dangerous[i])) {
+            return 0; // Dangerous command detected
+        }
+    }
+    
+    // Only allow whitelisted executables
+    const char* allowed[] = {
+        "notepad.exe", "calc.exe", "mspaint.exe", "explorer.exe",
+        "cmd.exe /c dir", "cmd.exe /c type", "cmd.exe /c echo",
+        NULL
+    };
+    
+    for (int i = 0; allowed[i]; i++) {
+        if (strncmp(cmd, allowed[i], strlen(allowed[i])) == 0) {
+            return 1; // Command is whitelisted
+        }
+    }
+    
+    return 0; // Command not in whitelist
+}
+
 HcsValue* builtin_exec(int argc, HcsValue** args) {
     if (argc < 1 || args[0]->type != HCS_VAL_STRING) return value_number(-1);
+    
+    // Validate command for security
+    if (!validate_command(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Command not allowed: %s\n", args[0]->data.string);
+        return value_number(-1);
+    }
     
     STARTUPINFOA si = {sizeof(si)};
     PROCESS_INFORMATION pi;
@@ -19,7 +60,14 @@ HcsValue* builtin_exec(int argc, HcsValue** args) {
     si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = (argc > 1 && args[1]->type == HCS_VAL_BOOL && args[1]->data.boolean) ? SW_SHOW : SW_HIDE;
     
-    char* cmd = strdup(args[0]->data.string);
+    // Use safer approach - don't modify the original string
+    size_t cmd_len = strlen(args[0]->data.string) + 1;
+    char* cmd = malloc(cmd_len);
+    if (!cmd) return value_number(-1);
+    
+    strncpy(cmd, args[0]->data.string, cmd_len - 1);
+    cmd[cmd_len - 1] = '\0';
+    
     if (!CreateProcessA(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         free(cmd);
         return value_number(-1);
@@ -40,13 +88,25 @@ HcsValue* builtin_exec(int argc, HcsValue** args) {
 HcsValue* builtin_exec_async(int argc, HcsValue** args) {
     if (argc < 1 || args[0]->type != HCS_VAL_STRING) return value_bool(false);
     
+    // Validate command for security
+    if (!validate_command(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Command not allowed: %s\n", args[0]->data.string);
+        return value_bool(false);
+    }
+    
     STARTUPINFOA si = {sizeof(si)};
     PROCESS_INFORMATION pi;
     
     si.dwFlags = STARTF_USESHOWWINDOW;
     si.wShowWindow = (argc > 1 && args[1]->type == HCS_VAL_BOOL && args[1]->data.boolean) ? SW_SHOW : SW_HIDE;
     
-    char* cmd = strdup(args[0]->data.string);
+    size_t cmd_len = strlen(args[0]->data.string) + 1;
+    char* cmd = malloc(cmd_len);
+    if (!cmd) return value_bool(false);
+    
+    strncpy(cmd, args[0]->data.string, cmd_len - 1);
+    cmd[cmd_len - 1] = '\0';
+    
     BOOL result = CreateProcessA(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
     free(cmd);
     

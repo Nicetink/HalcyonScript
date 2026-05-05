@@ -59,12 +59,13 @@ HcsValue* builtin_dvd_is_disc_present(int argc, HcsValue** args) {
     }
     
     const char* drive = args[0]->data.string;
-    char drive_path[10];
+    char drive_path[MAX_PATH];
     
     if (strlen(drive) == 1) {
-        sprintf(drive_path, "%s:\\", drive);
+        snprintf(drive_path, sizeof(drive_path), "%s:\\", drive);
     } else {
-        strcpy(drive_path, drive);
+        strncpy(drive_path, drive, sizeof(drive_path) - 1);
+        drive_path[sizeof(drive_path) - 1] = '\0';
     }
     
     // Method 1: Try GetVolumeInformation - this works for most discs
@@ -94,8 +95,8 @@ HcsValue* builtin_dvd_is_disc_present(int argc, HcsValue** args) {
     UINT driveType = GetDriveTypeA(drive_path);
     if (driveType == DRIVE_CDROM) {
         // For CD-ROM drives, try to open the device directly
-        char device_path[20];
-        sprintf(device_path, "\\\\.\\%c:", drive[0]);
+        char device_path[MAX_PATH];
+        snprintf(device_path, sizeof(device_path), "\\\\.\\%c:", drive[0]);
         
         HANDLE hDevice = CreateFileA(device_path, 0, 
                                     FILE_SHARE_READ | FILE_SHARE_WRITE, 
@@ -258,8 +259,8 @@ HcsValue* builtin_dvd_close_tray(int argc, HcsValue** args) {
         // Method 3: Try using MCI (Media Control Interface) commands
         CloseHandle(hDevice);
         
-        char mci_command[50];
-        sprintf(mci_command, "set cdaudio door closed wait");
+        char mci_command[256];
+        snprintf(mci_command, sizeof(mci_command), "set cdaudio door closed wait");
         
         MCIERROR mci_result = mciSendStringA(mci_command, NULL, 0, NULL);
         if (mci_result == 0) {
@@ -267,7 +268,7 @@ HcsValue* builtin_dvd_close_tray(int argc, HcsValue** args) {
         }
         
         // Method 4: Try specific drive letter with MCI
-        sprintf(mci_command, "set cdaudio%c door closed wait", drive[0]);
+        snprintf(mci_command, sizeof(mci_command), "set cdaudio%c door closed wait", drive[0]);
         mci_result = mciSendStringA(mci_command, NULL, 0, NULL);
         if (mci_result == 0) {
             return value_bool(true);
@@ -289,11 +290,16 @@ HcsValue* builtin_dvd_read_files(int argc, HcsValue** args) {
     const char* drive = args[0]->data.string;
     const char* path = (argc > 1 && args[1]->type == HCS_VAL_STRING) ? args[1]->data.string : "";
     
+    // Validate path to prevent directory traversal
+    if (strstr(path, "..") || strstr(path, "\\..\\") || strstr(path, "../")) {
+        return value_null(); // Reject path traversal attempts
+    }
+    
     char search_path[MAX_PATH];
     if (strlen(drive) == 1) {
-        sprintf(search_path, "%s:\\%s\\*", drive, path);
+        snprintf(search_path, sizeof(search_path), "%s:\\%s\\*", drive, path);
     } else {
-        sprintf(search_path, "%s\\%s\\*", drive, path);
+        snprintf(search_path, sizeof(search_path), "%s\\%s\\*", drive, path);
     }
     
     HcsValue* files = value_array();

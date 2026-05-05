@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include <math.h>
 
-#define HALCYON_VERSION "0.26.26"
+#define HALCYON_VERSION "0.27.26"
 #define HALCYON_RT_NAME "HalcyonRT"
 #define MAX_STRING_LEN 65536
 #define MAX_IDENTIFIER_LEN 256

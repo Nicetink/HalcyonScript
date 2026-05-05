@@ -23,12 +23,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "KAInaps"
             VALUE "FileDescription", "HalcyonScript Runtime"
-            VALUE "FileVersion", "0.26.26"
+            VALUE "FileVersion", "0.27.26"
             VALUE "InternalName", "HalcyonRT"
             VALUE "LegalCopyright", "Copyright (C) 2026 KAInaps"
             VALUE "OriginalFilename", "HalcyonRT.exe"
             VALUE "ProductName", "HalcyonScript"
-            VALUE "ProductVersion", "0.26.26"
+            VALUE "ProductVersion", "0.27.26"
         END
     END
     BLOCK "VarFileInfo"

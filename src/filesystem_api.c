@@ -10,10 +10,42 @@
 #include <stdio.h>
 #include <sys/stat.h>
 
+// Validate file path to prevent directory traversal attacks
+static int validate_file_path(const char* path) {
+    if (!path || strlen(path) == 0) return 0;
+    
+    // Check for directory traversal sequences
+    if (strstr(path, "..") || strstr(path, "\\..\\") || strstr(path, "../") || 
+        strstr(path, "..\\") || strstr(path, "/..")) {
+        return 0;
+    }
+    
+    // Check for absolute paths to system directories (basic protection)
+    const char* dangerous_paths[] = {
+        "C:\\Windows\\", "C:\\System32\\", "C:\\Program Files\\",
+        "/windows/", "/system32/", "/etc/", "/usr/", "/bin/", "/sbin/",
+        NULL
+    };
+    
+    for (int i = 0; dangerous_paths[i]; i++) {
+        if (strncmp(path, dangerous_paths[i], strlen(dangerous_paths[i])) == 0) {
+            return 0;
+        }
+    }
+    
+    return 1;
+}
+
 HcsValue* builtin_file_exists(int argc, HcsValue** args) {
     if (argc != 1 || args[0]->type != HCS_VAL_STRING) {
         return value_bool(false);
     }
+    
+    if (!validate_file_path(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Invalid file path: %s\n", args[0]->data.string);
+        return value_bool(false);
+    }
+    
     struct stat st;
     return value_bool(stat(args[0]->data.string, &st) == 0);
 }
@@ -21,16 +53,30 @@ HcsValue* builtin_file_exists(int argc, HcsValue** args) {
 HcsValue* builtin_file_read(int argc, HcsValue** args) {
     if (argc != 1 || args[0]->type != HCS_VAL_STRING) return value_null();
     
+    if (!validate_file_path(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Invalid file path: %s\n", args[0]->data.string);
+        return value_null();
+    }
+    
     FILE* f = fopen(args[0]->data.string, "rb");
     if (!f) return value_null();
     
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
+    if (size < 0 || size > 100*1024*1024) { // Limit to 100MB
+        fclose(f);
+        return value_null();
+    }
     fseek(f, 0, SEEK_SET);
     
     char* buffer = malloc(size + 1);
-    fread(buffer, 1, size, f);
-    buffer[size] = 0;
+    if (!buffer) {
+        fclose(f);
+        return value_null();
+    }
+    
+    size_t bytes_read = fread(buffer, 1, size, f);
+    buffer[bytes_read] = 0;
     fclose(f);
     
     HcsValue* result = value_string(buffer);
@@ -43,23 +89,41 @@ HcsValue* builtin_file_write(int argc, HcsValue** args) {
         return value_bool(false);
     }
     
+    if (!validate_file_path(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Invalid file path: %s\n", args[0]->data.string);
+        return value_bool(false);
+    }
+    
     FILE* f = fopen(args[0]->data.string, "wb");
     if (!f) return value_bool(false);
     
-    fwrite(args[1]->data.string, 1, strlen(args[1]->data.string), f);
+    size_t len = strlen(args[1]->data.string);
+    size_t written = fwrite(args[1]->data.string, 1, len, f);
     fclose(f);
-    return value_bool(true);
+    return value_bool(written == len);
 }
 
 HcsValue* builtin_file_copy(int argc, HcsValue** args) {
     if (argc != 2 || args[0]->type != HCS_VAL_STRING || args[1]->type != HCS_VAL_STRING) {
         return value_bool(false);
     }
+    
+    if (!validate_file_path(args[0]->data.string) || !validate_file_path(args[1]->data.string)) {
+        fprintf(stderr, "Security Error: Invalid file path\n");
+        return value_bool(false);
+    }
+    
     return value_bool(CopyFileA(args[0]->data.string, args[1]->data.string, FALSE));
 }
 
 HcsValue* builtin_file_delete(int argc, HcsValue** args) {
     if (argc != 1 || args[0]->type != HCS_VAL_STRING) return value_bool(false);
+    
+    if (!validate_file_path(args[0]->data.string)) {
+        fprintf(stderr, "Security Error: Invalid file path: %s\n", args[0]->data.string);
+        return value_bool(false);
+    }
+    
     return value_bool(DeleteFileA(args[0]->data.string));
 }
 

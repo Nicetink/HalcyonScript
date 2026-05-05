@@ -898,7 +898,7 @@ void halgui_audio_cleanup(void) {
 
 
 /* ============================================
-   Extended Widgets - New in 0.26.26
+   Extended Widgets - New in 0.27.26 (Security Update)
    ============================================ */
 
 /* TreeView */

@@ -6,6 +6,8 @@
 
 #include "value.h"
 #include <stdio.h>
+#include <stdint.h>
+#include <limits.h>
 
 HcsValue* value_null(void) {
     HcsValue* v = (HcsValue*)calloc(1, sizeof(HcsValue));
@@ -132,21 +134,49 @@ char* value_to_string(HcsValue* v) {
             
             size_t total_len = 2; // for [ and ]
             char** item_strs = malloc(sizeof(char*) * v->data.array.count);
+            if (!item_strs) return strdup("[]");
             
+            // Check for integer overflow in total_len calculation
             for (int i = 0; i < v->data.array.count; i++) {
                 item_strs[i] = value_to_string(v->data.array.items[i]);
-                total_len += strlen(item_strs[i]);
+                if (!item_strs[i]) {
+                    // Cleanup on error
+                    for (int j = 0; j < i; j++) free(item_strs[j]);
+                    free(item_strs);
+                    return strdup("[]");
+                }
+                
+                size_t item_len = strlen(item_strs[i]);
+                // Check for overflow
+                if (total_len > SIZE_MAX - item_len - 2) {
+                    // Cleanup on overflow
+                    for (int j = 0; j <= i; j++) free(item_strs[j]);
+                    free(item_strs);
+                    return strdup("[...]"); // Truncated representation
+                }
+                
+                total_len += item_len;
                 if (i < v->data.array.count - 1) total_len += 2; // for ", "
             }
             
             char* result = malloc(total_len + 1);
-            strcpy(result, "[");
+            if (!result) {
+                for (int i = 0; i < v->data.array.count; i++) free(item_strs[i]);
+                free(item_strs);
+                return strdup("[]");
+            }
+            
+            strncpy(result, "[", total_len);
+            result[1] = '\0'; // Ensure null termination
+            
             for (int i = 0; i < v->data.array.count; i++) {
-                strcat(result, item_strs[i]);
-                if (i < v->data.array.count - 1) strcat(result, ", ");
+                strncat(result, item_strs[i], total_len - strlen(result) - 1);
+                if (i < v->data.array.count - 1) {
+                    strncat(result, ", ", total_len - strlen(result) - 1);
+                }
                 free(item_strs[i]);
             }
-            strcat(result, "]");
+            strncat(result, "]", total_len - strlen(result) - 1);
             free(item_strs);
             return result;
         }
